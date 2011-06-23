@@ -1,0 +1,10 @@
+<div class='change'>
+    <div class='change_title'>{{change.title}}</div>
+    <div class='change_desc'>{{change.description_html}}</div>
+    <div class='change_info'>
+        <div class='change_date'>{{change.created|date}} {{change.created|time}}</div>
+        <div class='change_link'><a href='{{change.url}}'>Permalink</a></div>
+        <div class='change_version'><a href='{{change.version_url}}'>Version {{ change.get_version_display }}</a></div>
+    </div>
+    <hr/>
+</div>

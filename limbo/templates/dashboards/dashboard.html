@@ -1,0 +1,18 @@
+{%  if dashboard and dashboard.widgets %}
+<div class='dashboard'>
+    <a href='{{ dashboard.href }}' class='dlink'></a>
+    <div class='dtimespan'></div>
+    {%  for widget in dashboard.widgets %}
+        <div class='dash_widget ui-widget {{ widget.name }}' title="{{ widget.description }}">
+            <h2>{{ widget.title }}</h2>
+            <p class='dval'></p>
+        </div>
+    {%  endfor %}
+    {%  if dashboard.DEFAULT_RANGE %}
+    <div class='default_range ui-helper-hidden'>
+        <span class='start'>{{ dashboard.start|date }}</span>
+        <span class='end'>{{ dashboard.end|date }}</span>
+    </div>
+    {%  endif %}
+</div>
+{%  endif %}

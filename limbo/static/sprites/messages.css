@@ -1,0 +1,15 @@
+.messages-s { 
+	background: url(messages.png) no-repeat top left;
+	background-repeat:no-repeat;
+	display:inline-block;
+	height:16px;
+	width:16px;
+	border:none;
+}
+.messages-error{ background-position: 0 0; width: 16px; height: 16px; } 
+.messages-explain{ background-position: 0 -26px; width: 16px; height: 16px; } 
+.messages-info{ background-position: 0 -52px; width: 16px; height: 16px; } 
+.messages-question{ background-position: 0 -78px; width: 16px; height: 16px; } 
+.messages-terminal{ background-position: 0 -104px; width: 16px; height: 16px; } 
+.messages-tick{ background-position: 0 -130px; width: 16px; height: 16px; } 
+.messages-warning{ background-position: 0 -156px; width: 16px; height: 16px; } 

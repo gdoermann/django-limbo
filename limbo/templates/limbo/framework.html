@@ -1,0 +1,53 @@
+<script type='text/javascript'>
+    var True = true, False = false;
+
+    LIMBO = function (a){
+        var parent = this;
+        this.USER = "{{request.user.get_profile.shortname}}";
+        this.STATIC_BASE = '{{ SITE_MEDIA_ROOT }}';
+        this.URLS = {% if URLS %}{{URLS|safe}}{% else %}{}{% endif %};
+        this.DATA = {}
+        {% for key, value in ajax_data.items %}
+        this.DATA[{{key}}] = {{value}};
+        {% endfor %}
+        this.LOADER = '<img src="' + this.STATIC_BASE + 'images/loader.gif" alt="loading..." class="loader" />';
+        this.CENTER_LOADER = '<p class="center">' + this.LOADER + '</p>';
+        this.AJAX_ERROR = '<div style="padding-top:1em;text-align:center; font-size:15px; font-weight:bold;">There was en error processing your request. Please try again later</div>';
+        this.DEBUG = {% firstof SETTINGS.DEBUG 'false' %};
+        this.DASHBOARD_FILTER_FORM = {% firstof dashboard_filter_form '""' %};
+        this.MESSAGE_SYNC = this.URLS['message_sync'];
+        this.ERROR_URL = this.URLS['js_errors'];
+        this.GET = {{ GET_DATA|safe }};
+        this.set = function (key, item){
+            parent[key] = item;
+        }
+        this.get = function (key){
+            return parent[key];
+        }
+        this.register = this.set
+
+        this.call = function(fn, opts){
+            if (fn == undefined){
+                return;
+            }
+            try{
+                fn(opts);
+            } catch (e){
+                console.log(fn, opts, e);
+            }
+        }
+
+        this._init = function(){
+            for (index in this.init){
+                this.call(this.init[index]);
+            }
+        }
+
+        this.init = [];
+        if (a){this.init.push(a)}
+
+        this._init();
+    }
+
+    window.LIMBO = new LIMBO();
+</script>

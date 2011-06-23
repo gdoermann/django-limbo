@@ -1,0 +1,28 @@
+{%  extends 'limbo/base.ajax.html' %}
+
+{%  block content %}
+    <h1>{% firstof form_header title %}</h1>
+    {%  if fieldsets %}
+        <div class='form_wrapper' >
+        <form action='{%  firstof form.action form_action %}' method='{% firstof form_method "post" %}'
+              {% if form.is_multipart %}enctype="multipart/form-data"{% endif %}
+              {%  if form_classes %}class='{% for cls in form_classes %}{{ cls }} {% endfor %}'{% endif %}
+              {%  if form.id %}id='{{ form.id }}'{% endif %}>
+            {%  csrf_token %}
+            {%  include 'forms/stub.fieldsets.html' %}
+            {% include 'forms/form_meta.html' %}
+        </form>
+        </div>
+    {% else %}
+        <div class='form_wrapper' >
+        <form action='{%  firstof form.action form_action %}' method='{% firstof form_method "post" %}'
+              {% if form.is_multipart %}enctype="multipart/form-data"{% endif %}
+              {%  if form_classes %}class='{% for cls in form_classes %}{{ cls }} {% endfor %}'{% endif %}
+              {%  if form.id %}id='{{ form.id }}'{% endif %}>
+            {%  csrf_token %}
+            {{ form.as_p }}
+            {% include 'forms/form_meta.html' %}
+        </form>
+        </div>
+    {%  endif %}
+{%  endblock %}

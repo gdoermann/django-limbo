@@ -1,0 +1,5 @@
+<span class='action_bar'>
+	<input type='submit' value='{% firstof submit_text "Save" %}'/>
+	<input type='reset' value='Reset' />
+	<input type='button' value='Cancel' onclick='{%  if cancel_url %}window.location="{{cancel_url}}";{%  else %}history.back();{%  endif %}'/>
+</span>

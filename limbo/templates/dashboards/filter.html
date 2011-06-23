@@ -1,0 +1,11 @@
+<form class='dcontrols' action=''>
+    <button class="drefresh"><span class="ui-icon ui-icon-refresh"></span></button>
+    <button class="dfilter"><span class="ui-icon ui-icon-search"></span></button>
+    <div class="dfilters ui-helper-hidden">
+        {{ form.as_p }}
+        <span class="action_bar">
+            <input type="submit" value="Update">
+            <input type='reset' value='Reset' />
+        </span>
+    </div>
+</form>

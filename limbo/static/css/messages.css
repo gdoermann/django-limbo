@@ -1,0 +1,120 @@
+
+/* Message Colors */
+.message.debug{
+	color:#FFA537;
+}
+.message.info {
+	color: #3493c9;
+}
+
+.message.success {
+	color: #2DD37F;
+}
+
+.message.warning {
+	color:#FFCA37;
+}
+
+.message.error {
+	color:#FF6737;
+}
+
+/* Messages */
+
+.messages_wrapper{
+	width:100%;
+	margin:1em 0 .25em;
+}
+
+.messages_widget{
+	position:relative;
+	margin:auto;
+	width:600px;
+	height:2.1em;
+}
+
+.msgL,
+.msgR  {
+	display:inline-block !important;
+	position:absolute !important;
+	padding:0 !important;
+	background:none !important;
+}
+
+.msgL .ui-button-text,
+.msgR .ui-button-text{
+	padding:0.1em 0.3em !important;
+}
+
+.msgL {
+	left:0;
+}
+
+.msgR {
+	right:0;
+}
+
+.message_slider {
+	overflow:hidden;
+	position:absolute;
+	width:100%;
+	left:-3px !important;
+	top: -3px !important;
+	padding: 2px 2px 1px 1px;
+	display:inline-block;
+    height:25px;
+}
+
+.message_slider p{
+	margin:0 !important;
+	padding:0 !important;
+	display:inline-block;
+	position:relative;
+	min-width:1200px;
+	overflow:hidden;
+}
+
+.message {
+	text-align:center;
+	float:left;
+	width:550px;
+	margin: 0 25px;
+	white-space:nowrap;
+	overflow:auto;
+}
+
+
+.message.debug{
+	background-color:#FFF;
+}
+
+.message i{
+	position:relative;
+	left:-6px;
+	bottom:-3px;
+}
+
+
+.ui-dialog a.ui-dialog-titlebar-close {
+	border-bottom:none;
+}
+
+/* Floating Message */
+#floatingMessage, #floatingMessage.hidden {
+  display: none;
+}
+
+#floatingMessage.visible {
+  display: block;
+  position: absolute;
+  background-color: white;
+  border: 2px solid black;
+  padding: 5px;
+  z-index: 7;
+  max-width: 200px;
+}
+
+#floatingMessage.info {
+	border-color: #3493C9;
+	color: #3493C9;
+}

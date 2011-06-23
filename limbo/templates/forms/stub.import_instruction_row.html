@@ -1,0 +1,25 @@
+<tr>
+    <td class='index'>{{ index }}</td>
+    <td class='name{%  if field.required %} required' title='Required Field{%  endif %}'>
+        {{ name }}{%  if field.required %}{%  endif %}
+    </td>
+    <td class='constraints'>
+        {%  if constraints %}
+        <ol>
+            {%  for key, value in constraints.items %}
+                <li><span class="opt_key bold">{{ key }}:</span>{{ value }}</li>
+            {%  endfor %}
+        </ol>
+        {%  endif %}
+        {% if choices %}
+        <ol title="Choices are strictly enforced!">
+            <label>Choices:</label>
+            {%  for key, value in choices %}
+                <li><span class="opt_key bold">{{ key }}</span>{{ value }}</li>
+            {%  endfor %}
+        </ol>
+
+        {%  endif %}
+    </td>
+    <td>{{ field.help_text }}</td>
+</tr>

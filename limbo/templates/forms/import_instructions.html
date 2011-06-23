@@ -1,0 +1,17 @@
+{%  load imports %}
+<table id="{%  firstof table_id "import_instructions" %}" class='import_instructions datatable' >
+    <thead>
+        <tr>
+            <th></th>
+            <th class='field'>Field</th>
+            <th class='fconstraint'>Constraints</th>
+            <th class='fdescription'>Description</th>
+        </tr>
+    </thead>
+    <tbody>
+        {%  for field in form.fields %}
+            {% field_instructions field %}
+        {%  endfor %}
+    </tbody>
+
+</table>

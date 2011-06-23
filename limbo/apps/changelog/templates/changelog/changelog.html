@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block css %}
+    <link rel="alternate" type="application/rss+xml" name="RSS" href="{% url changelog:feed %}"/>
+{% endblock %}
+
+{% block content %}
+{%  if perms.changelog.add_change %}
+    <div id='rss' class='action_bar'>
+        <button id="rss_button"><a href='{% url changelog:feed %}'><span class="ui-icon ui-icon-signal-diag"></span></a></button>
+        <button id='add_change'><a href="{%  url changelog:add_change %}"><span class="ui-icon ui-icon-plusthick"></span></a></button>
+    </div>
+{%  endif %}
+
+<div id='changes'>
+    <h1 id='title'>{{ title }}</h1>
+    <hr />
+    <div class='changelog'>
+        {% for change in logs %}
+            {% include 'changelog/_change.html' %}
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

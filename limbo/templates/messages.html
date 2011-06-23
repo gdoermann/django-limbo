@@ -1,0 +1,13 @@
+<div class='messages_wrapper ui-helper-hidden'>
+	<div class='messages_widget ui-corner-all'>
+		<div class='message_slider'>
+			<p class="messages">
+				{% for message in messages %}
+				<span{% if message.tags %} title="{{ message }}" class="message {{ message.tags }}"{% endif %}><i class='msg_icon'></i>{{ message }}</span>
+				{% endfor %}
+			</p>
+		</div>
+		<span class='msgL'><</span>
+		<span class='msgR'>></span>
+	</div>
+</div>

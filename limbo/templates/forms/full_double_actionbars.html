@@ -1,0 +1,8 @@
+{%  with "True" as double_actionbars %}
+<h1>{% firstof form_header title %}</h1>
+{%  if fieldsets %}
+    {% include 'forms/full_fieldset.html' %}
+{% else %}
+    {% include 'forms/full_form.html' %}
+{%  endif %}
+{%  endwith %}

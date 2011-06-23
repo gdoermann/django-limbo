@@ -1,0 +1,8 @@
+{% for label, form in fieldsets.items %}
+<fieldset>
+    <legend class='{{ label|slugify }}'><a href="javascript:void(0);">{{ label }}</a></legend>
+    <div>
+        {{ form.as_p }}
+    </div>
+</fieldset>
+{%  endfor %}

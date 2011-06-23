@@ -1,0 +1,6 @@
+{%  extends 'base.html' %}
+
+{%  block content %}
+<h1>{% firstof form_header title %}</h1>
+{%  include 'forms/full_formset.html' %}
+{%  endblock %}

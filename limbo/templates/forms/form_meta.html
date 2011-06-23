@@ -1,0 +1,26 @@
+{% load form_meta %}
+{%  if form.Meta or contingent_forms.keys%}
+{#<table style='display:none' class='form_meta'>#}
+<table class='form_meta'>
+    {%  if form.Meta.prepopulated_fields.items %}
+    <tr class='prepopulated_fields'>
+    {%  for key, values in form.Meta.prepopulated_fields.items %}
+        <td><span class='key'>{% get_id key %}</span>
+        {%  for value in values %}
+            <span class='value'>{% get_id value %}</span>
+        {%  endfor %}
+        </td>
+    {%  endfor %}
+    </tr>
+    {%  endif %}
+    {%  if contingent_forms.keys %}
+    <tr class='contingent_forms'>
+    {%  for field, href in contingent_forms.items %}
+        <td>
+            <a href='{{ href }}'>{{ field.auto_id }}</a>
+        </td>
+    {%  endfor %}
+    </tr>
+    {%  endif %}
+</table>
+{%  endif %}

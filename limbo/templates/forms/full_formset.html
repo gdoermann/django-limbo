@@ -1,0 +1,14 @@
+<div class='form_wrapper' >
+<form action='{%  firstof form.action form_action %}' method='{% firstof form_method "post" %}'
+      {% if form.is_multipart %}enctype="multipart/form-data"{% endif %}
+      {%  if form_classes %}class='{% for cls in form_classes %}{{ cls }} {% endfor %}'{% endif %}
+      {%  if form.id %}id='{{ form.id }}'{% endif %}>
+    {%  if form_method|lower != 'get' %}{%  csrf_token %}{% endif %}
+    {%  if double_actionbars %}{% include 'forms/actionbar.html' %}{% endif %}
+    <table class='formset'>
+        {{ formset }}
+    </table>
+    {% include 'forms/actionbar.html' %}
+    {% include 'forms/form_meta.html' %}
+</form>
+</div>

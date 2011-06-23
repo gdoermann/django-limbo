@@ -1,0 +1,23 @@
+Django Limbo
+This is a library of django tools that are used to extend default django functionality.
+
+To install:
+
+1. Run python setyp.py
+
+2. Add limbo and any of the limbo apps to settings.py INSTALLED_APPS
+
+3. Add to urls.py
+Add to your url root url conf at a url like this:
+    (r'^util/', include('limbo.urls', namespace='limbo'))
+
+Note: The namespace is important!
+
+Limbo does not have any models at this time that are not abstract.
+
+
+I pulled logic from / altered / included the following apps:
+    limb.apps.breadcrumbs is an improved http://code.google.com/p/django-breadcrumbs by Felipe Prenholato
+    compiler.jar is the google js compiler Closure: http://code.google.com/closure/compiler/
+    css_util.py is by Andy Hochhaus
+

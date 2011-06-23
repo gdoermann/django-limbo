@@ -1,0 +1,20 @@
+<div class="report_wrapper" id='{{ report.id }}'>
+    <h2><a>{{ report}}</a></h2>
+    <div>
+        <form method='{% firstof report.method 'post' %}'
+              {%  if report.target %}target='{{ report.target }}'{% endif %}
+              {%  if report.action %}action="{{ report.action }}"{% endif %}
+               class='report_form' >
+            {%  if report.method != 'get' %}{% csrf_token %}{%  endif %}
+            {{ report.form.as_p }}
+            <span class='action_bar'>
+                <input type="submit" value='Run' />
+                <span class='report_content_wrapper ui-helper-hidden'>
+                    <button class='fullscreen_btn'>View</button>
+                    <div class='report_content  ui-helper-hidden'></div>
+                </span>
+            </span>
+        </form>
+
+    </div>
+</div>

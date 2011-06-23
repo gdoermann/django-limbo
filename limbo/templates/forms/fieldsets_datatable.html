@@ -1,0 +1,28 @@
+<table class="datatable">
+    <thead>
+        <tr>
+            <th>Group</th>
+            <th>Description</th>
+            <th>Value</th>
+        </tr>
+    </thead>
+    <tbody>
+    {%  for label, form in fieldsets.items %}
+        {%  for field in form %}
+            <tr>
+                <td>{{ label }}</td>
+                <td>{{ field.label_tag }}</td>
+                <td><span class='errors'>{{ field.errors }}</span>{{ field }}</td>
+            </tr>
+        {%  endfor %}
+    {%  endfor %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <td></td>
+            <td></td>
+        </tr>
+    </tfoot>
+</table>
+{% include 'forms/actionbar.html' %}
+{% include 'forms/form_meta.html' %}

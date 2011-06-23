@@ -1,0 +1,9 @@
+{%  for widget in widgets %}
+    <div id='{{ widget.attr }}' class='dash_widget ui-widget'>
+        <h2>{{ widget.title }}</h2>
+        <p id='{{ widget.attr }}_val'>{{ widget }}</p>
+        {%  if widget.source %}
+        <a href="{{ widget.source }}" class='ui-helper-hidden dash_widget_source'></a>
+        {%  endif %}
+    </div>
+{%  endfor %}
