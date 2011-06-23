@@ -3,7 +3,7 @@ This is a library of django tools that are used to extend default django functio
 
 To install:
 
-1. Run python setyp.py
+1. Run python setup.py
 
 2. Add limbo and any of the limbo apps to settings.py INSTALLED_APPS
 
