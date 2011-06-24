@@ -14,9 +14,24 @@ setup(
     This is a long list of libraries I have used in almost all of my projects.
     This also includes altered code from django snippets and code I have copied directly from others.
     """,
-    download_url='https://github.com/gdoermann/django-limbo/tarball/master',
+    download_url='https://github.com/gdoermann/django-limbo/raw/master/django-limbo-1.7.0.tar.gz',
     license='https://github.com/gdoermann/django-limbo/blob/master/MIT-LICENSE.txt',
     platform=['Any'],
     packages=['limbo',],
-    requires=['django', ]
+    requires=['django', ],
+    classifiers = [
+        'Development Status :: 4 - Beta',
+        'Environment :: Web Environment',
+        'Framework :: Django',
+        'Intended Audience :: Developers',
+        'License :: OSI Approved :: MIT License',
+        'Operating System :: OS Independent',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 2.6',
+        'Programming Language :: Python :: 2.7',
+        'Topic :: Internet :: WWW/HTTP',
+        'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
+        'Topic :: Internet :: WWW/HTTP :: WSGI',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+   ],
      )
