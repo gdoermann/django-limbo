@@ -44,7 +44,7 @@ version = __import__('limbo').get_version()
 
 
 setup(
-    name='Django Limbo',
+    name='django-limbo',
     version='1.7.0',
     url='https://github.com/gdoermann/django-limbo',
     author='Gregory Doermann',
