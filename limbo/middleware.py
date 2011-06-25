@@ -1,8 +1,11 @@
+import os
 from django.contrib import messages
 import traceback
-from django.http import HttpResponseForbidden
+from django.contrib.auth.views import login
+from django.http import HttpResponseForbidden, HttpResponseRedirect
 from django.utils.importlib import import_module
 from limbo import exceptions
+from django.views.static import serve
 from limbo.paths import request_full_url
 from limbo.strings import unslugify
 from django.utils.translation import ugettext as _
@@ -13,6 +16,25 @@ urlconf = settings.ROOT_URLCONF
 urls = import_module(settings.ROOT_URLCONF)
 
 log = logging.getLogger(__file__)
+
+class LoginMiddleware:
+    def process_view(self, request, view_func, view_args, view_kwargs):
+        if any([
+                view_kwargs.pop('public', False),
+                request.user.is_authenticated(),
+                view_func == serve,
+                view_func == login,
+                request.path.startswith(settings.MEDIA_URL),
+                os.path.splitext(request.path)[-1].lower() in ('.ico', '.png', '.jpg', '.gif')
+                ]):
+            return
+        if request.method == 'POST':
+            response = login(request)
+            if request.user.is_authenticated():
+                return HttpResponseRedirect(request.path)
+            return response
+        else:
+            return login(request)
 
 class ExceptionsMiddleware(object):
     def process_exception(self, request, exception):
@@ -92,7 +114,6 @@ class RequestMiddleware:
             "random_string":reverse('limbo:random_string'),
             "message_sync":reverse('limbo:message_sync'),
             "js_errors":reverse('limbo:js_errors'),
-            "feedback_form":reverse('limbo:ajax_submit'),
         }
 
         return urls

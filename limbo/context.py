@@ -23,7 +23,7 @@ class PageContext(dict):
             self['PAGE'] = page
         self.update(d)
         self.request = request
-        if title:
+        if hasattr(request, 'breadcrumbs') and title:
             bd_title = title.split(':')[-1].strip()
             request.breadcrumbs(_(bd_title), request.path)
 

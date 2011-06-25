@@ -4,7 +4,6 @@ import traceback
 from copy import copy
 import logging
 from limbo.models import model_attribute
-from limbo.timeblock.logic import TimeBlock
 
 log = logging.getLogger(__file__)
 
@@ -148,6 +147,7 @@ def update_year(dtime, offset):
 
 
 def flattened_queryset_timeblocks(queryset, start_key, end_key):
+    from limbo.timeblock.logic import TimeBlock
     queryset = queryset.order_by(start_key)
     timeblocks = []
     current_tb = None

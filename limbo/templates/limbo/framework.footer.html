@@ -1,9 +1,12 @@
 {#Example Framework Footer#}
+{% load static %}
 {%  include 'limbo/framework.html' %}
 {%  if SETTINGS.DEBUG %}
-{%  for js in SETTINGS.JAVASCRIPTS %}
-<script type="text/javascript" charset="utf-8" src="{{JS}}{{ js }}"></script>
-{%  endfor %}
+    {%  for js in SETTINGS.JAVASCRIPTS %}
+        <script type="text/javascript" charset="utf-8" src="{% get_static_prefix %}js/{{ js }}" ></script>
+    {%  endfor %}
+    <script type="text/javascript" charset="utf-8" src="{% get_static_prefix %}js/ui.limbo.js" ></script>
+    <script type="text/javascript" charset="utf-8" src="{% get_static_prefix %}js/limbo.js" ></script>
 {%  else %}
-    <script type="text/javascript" charset="utf-8" src="{{JS}}limbo.min.js"></script>
+    <script type="text/javascript" charset="utf-8" src="{% get_static_prefix %}js/limbo.min.js"></script>
 {%  endif %}
