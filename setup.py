@@ -42,19 +42,18 @@ for dirpath, dirnames, filenames in os.walk(limbo_dir):
 
 version = __import__('limbo').get_version()
 
-
+version = '1.7.1'
 setup(
     name='django-limbo',
-    version='1.7.0',
+    version=version,
     url='https://github.com/gdoermann/django-limbo',
     author='Gregory Doermann',
     author_email='dev@doermann.me',
-    summary='A bunch of django libraries that hang in limbo...',
     description="""
     This is a long list of libraries I have used in almost all of my projects.
     This also includes altered code from django snippets and code I have copied directly from others.
     """,
-    download_url='https://github.com/gdoermann/django-limbo/raw/master/django-limbo-1.7.0.tar.gz',
+    download_url='https://github.com/gdoermann/django-limbo/raw/master/django-limbo-%s.tar.gz' % version,
     license='https://github.com/gdoermann/django-limbo/blob/master/MIT-LICENSE.txt',
     platform=['Any'],
     packages=packages,
