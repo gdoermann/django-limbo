@@ -5,7 +5,7 @@ from distutils.core import setup
 
 setup(
     name='Django Limbo',
-    version='1.7.0',
+    version='1.7.1',
     url='https://github.com/gdoermann/django-limbo',
     author='Gregory Doermann',
     author_email='dev@doermann.me',
@@ -14,7 +14,6 @@ setup(
     This is a long list of libraries I have used in almost all of my projects.
     This also includes altered code from django snippets and code I have copied directly from others.
     """,
-    download_url='https://github.com/gdoermann/django-limbo/raw/master/django-limbo-1.7.0.tar.gz',
     license='https://github.com/gdoermann/django-limbo/blob/master/MIT-LICENSE.txt',
     platform=['Any'],
     packages=['limbo',],
