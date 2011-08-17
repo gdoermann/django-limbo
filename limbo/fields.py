@@ -37,9 +37,9 @@ class MobileField(fields.CharField):
             raise ValidationError(self.error_messages['invalid'])
         return clean_sms(value)
 
-
 class ParsedChoiceField(fields.ChoiceField):
     DEFAULT_PARSERS = list()
+
     def __init__(self, *args, **kwargs):
         self.parsers = list(kwargs.pop('parsers', [])) + list(self.DEFAULT_PARSERS)
         super(ParsedChoiceField, self).__init__(*args, **kwargs)
@@ -58,33 +58,13 @@ class ParsedChoiceField(fields.ChoiceField):
         self.run_validators(value)
         return value
 
-def stripped_reverse_choice(value, choices):
-    def strip(v):
-        v = str(v)
-        replace = ['-', '_', "'", '"']
-        v = slugify(v)
-        for i in replace:
-            v = v.replace(i, '')
-        return v
-    stripped = strip(value)
-    for choice, display in choices:
-        if stripped == strip(choice):
-            return choice
-        if stripped == strip(display):
-            return choice
-    for choice, display in choices:
-        if stripped in strip(choice):
-            return choice
-        if stripped in strip(display):
-            return choice
-    return value
-
 class UploadChoiceField(ParsedChoiceField):
-    DEFAULT_PARSERS = (stripped_reverse_choice,)
+    DEFAULT_PARSERS = (widgets.stripped_reverse_choice,)
+    widget = widgets.CheckedSelect
 
     @classmethod
-    def from_choice_field(cls, field):
-        return fields.ChoiceField(field.choices, field.required, field.widget, field.label,
+    def from_choice_field(cls, field, widget=widgets.CheckedSelect):
+        return cls(field.choices, field.required, widget, field.label,
                  field.initial, field.help_text,
                  error_messages=field.error_messages, show_hidden_initial=field.show_hidden_initial,
                  validators=field.validators, localize=field.localize)
@@ -100,9 +80,9 @@ class ModelUploadChoiceField(models.ModelChoiceField, UploadChoiceField):
         return UploadChoiceField.clean(self, value)
 
     @classmethod
-    def from_model_choice_field(cls, field):
-        return ModelUploadChoiceField(field.queryset, field.empty_label, field.cache_choices,
-                 field.required, field.widget, field.label, field.initial,
+    def from_model_choice_field(cls, field, widget=widgets.CheckedSelect):
+        return cls(field.queryset, field.empty_label, field.cache_choices,
+                 field.required, widget, field.label, field.initial,
                  field.help_text, field.to_field_name,
                  error_messages=field.error_messages, show_hidden_initial=field.show_hidden_initial,
                  validators=field.validators, localize=field.localize)

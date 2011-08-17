@@ -5,6 +5,7 @@ from django.utils import datetime_safe
 from django.utils.encoding import force_unicode
 from django.utils.html import conditional_escape
 from django.utils.safestring import mark_safe
+from django.template.defaultfilters import slugify
 import traceback
 
 class MultiClassWidget(Widget):
@@ -52,6 +53,34 @@ class AutoComplete(MultiClassWidget, TextInput):
 
 class Combobox(Select, MultiClassWidget):
     classes = ['combobox']
+
+
+def stripped_reverse_choice(value, choices):
+    def strip(v):
+        v = str(v)
+        replace = ['-', '_', "'", '"']
+        v = slugify(v)
+        for i in replace:
+            v = v.replace(i, '')
+        return v.lower()
+    stripped = strip(value)
+    for choice, display in choices:
+        if stripped == strip(choice):
+            return choice
+        if stripped == strip(display):
+            return choice
+    for choice, display in choices:
+        if stripped in strip(choice):
+            return choice
+        if stripped in strip(display):
+            return choice
+    return value
+
+class CheckedSelect(widgets.Select):
+    def render(self, name, value, attrs=None, choices=()):
+        ovalue = value
+        value = stripped_reverse_choice(value, self.choices)
+        return super(CheckedSelect, self).render(name, value, attrs=attrs, choices=choices)
 
 DATE_PICKER_FORMAT = '%m/%d/%Y'     # '5/24/2010'
 

@@ -195,3 +195,16 @@ class Pages:
 class PageMiddleware:
     def process_view(self, request, view_func, view_args, view_kwargs):
         request.pages = Pages(request, view_func, view_args, view_kwargs)
+
+try:
+    from debug_toolbar.middleware import DebugToolbarMiddleware
+except:
+    DebugToolbarMiddleware = object
+
+class AdminDebugToolbarMiddleware(DebugToolbarMiddleware):
+    """ All superusers see debug toolbar """
+    def _show_toolbar(self, request):
+        if request.user.is_superuser:
+            return True
+        else:
+            return super(AdminDebugToolbarMiddleware, self)._show_toolbar(request)

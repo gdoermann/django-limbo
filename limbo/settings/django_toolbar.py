@@ -1,17 +1,11 @@
-from settings import MIDDLEWARE_CLASSES, INSTALLED_APPS
+import os
+module = os.environ.get('DJANGO_SETTINGS_MODULE', 'settings')
+exec('import %s as module' % module)
+MIDDLEWARE_CLASSES, INSTALLED_APPS = module.MIDDLEWARE_CLASSES, module.INSTALLED_APPS
 
-def combine_tuples(*args):
-    c = []
-    for l in args:
-        c += list(l)
-    return tuple(c)
+MIDDLEWARE_CLASSES = MIDDLEWARE_CLASSES + ('limbo.middleware.AdminDebugToolbarMiddleware', )
 
-def add_to_tuple(tup, item):
-    return tuple(list(tup) + [item])
-
-MIDDLEWARE_CLASSES = add_to_tuple(MIDDLEWARE_CLASSES, 'debug_toolbar.middleware.DebugToolbarMiddleware')
-
-INSTALLED_APPS = add_to_tuple(INSTALLED_APPS, 'debug_toolbar')
+INSTALLED_APPS = INSTALLED_APPS + ('debug_toolbar', )
 
 def add_network(*interfaces):
     try:
