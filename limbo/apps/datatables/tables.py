@@ -5,8 +5,7 @@ from django.template.defaultfilters import slugify
 from django.utils.encoding import StrAndUnicode
 from limbo.strings import unslugify
 from limbo.meta import DeclarativeFieldsMetaclass
-from limbo.ajax import AjaxMessage
-from django.db.models import Q
+from limbo.ajax import AjaxMessage, json_response
 from django.template.loader import render_to_string
 from django.http import HttpResponse
 from django.utils.cache import add_never_cache_headers
@@ -18,6 +17,7 @@ from django import template
 from limbo.apps.datatables.fields import TableField
 
 DEFAULT_TEMPLATE = 'datatables/stub.server_data_table.html'
+DEFAULT_STATIC_TEMPLATE = 'datatables/stub.static_data_table.html'
 DEFAULT_BASE = 'datatables/generic_table_base.html'
 
 class BoundColumn:
@@ -109,7 +109,7 @@ class DataTablesBase(StrAndUnicode):
     def column_names(self):
 #        return [column.name for column in self.values()]
         return self.column_labels
-    
+
     @property
     def column_labels(self):
         return self.labels.values()
@@ -159,24 +159,18 @@ class DataTablesBase(StrAndUnicode):
         if customSearch != '':
             outputQ = None
             for searchableColumn in searchableColumns:
-                kwargz = {searchableColumn.attr+"__icontains" : customSearch}
-                outputQ = outputQ | Q(**kwargz) if outputQ else Q(**kwargz)
+                q = searchableColumn.Q(customSearch)
+                if q:
+                    outputQ = outputQ | q if outputQ else q
             queryset = queryset.filter(outputQ)
 
         # Individual column search
-        outputQ = None
         for col in range(0, self.cols):
             if self.data.get('sSearch_%s' %col, False) > '' and self.data.get('bSearchable_%s' %col, False) == 'true':
                 column = self.values()[col]
                 if column.searchable:
                     value = self.data['sSearch_%s' %col]
-                    q = column.filter(value)
-                    if q:
-                        outputQ = outputQ & q if outputQ else q
                     queryset = column.filter_queryset(queryset, value)
-        if outputQ is not None:
-            queryset = queryset.filter(outputQ)
-
         return queryset
 
     @property
@@ -241,6 +235,12 @@ class DataTablesBase(StrAndUnicode):
         add_never_cache_headers(response)
         return response
 
+    def rows(self, queryset):
+        rows = []
+        for obj in queryset:
+            rows.append(self.row_data(obj))
+        return rows
+
     def response(self, queryset, jsonTemplatePath = None, *args):
         queryset = self.filter(queryset)
 
@@ -255,13 +255,11 @@ class DataTablesBase(StrAndUnicode):
             jstonString = render_to_string(jsonTemplatePath, locals())
             response = HttpResponse(jstonString, mimetype="application/javascript")
         else:
-            aaData = []
-            for obj in queryset:
-                aaData.append(self.row_data(obj))
+            aaData = self.rows(queryset)
             response_dict = {}
             response_dict.update({'aaData':aaData})
             response_dict.update({'sEcho': sEcho, 'iTotalRecords': iTotalRecords, 'iTotalDisplayRecords':iTotalDisplayRecords, 'sColumns':self.sColumns})
-            response =  HttpResponse(simplejson.dumps(response_dict), mimetype='application/javascript')
+            response =  json_response(response_dict)
         add_never_cache_headers(response)
         return response
 
@@ -286,21 +284,25 @@ class DataTable(DataTablesBase):
 class ModelDataTableBase(DataTablesBase):
     """ A data table representation that knows how to render itself """
     DEFAULT_TEMPLATE = DEFAULT_TEMPLATE
+    DEFAULT_STATIC_TEMPLATE = DEFAULT_STATIC_TEMPLATE
     DEFAULT_BASE = DEFAULT_BASE
 
     # Extended initialization of the data table
     id='server_table'
     base=DEFAULT_BASE
-    template=DEFAULT_TEMPLATE
+    server_template=DEFAULT_TEMPLATE
+    static_template=DEFAULT_STATIC_TEMPLATE
     form=None
+    title=None
     search_form=None
     jsonTemplatePath=None
     source_path=None
 
-    def __init__(self, request, source_url = None):
+    def __init__(self, request, source_url = None, title=None):
         self.base = DEFAULT_BASE
         self.source = source_url or request.path
         DataTablesBase.__init__(self, request)
+        self.title = title or self.title
 
     def save(self, queryset, *args, **kwargs):
         return DataTablesBase.save(self, queryset,
@@ -308,11 +310,49 @@ class ModelDataTableBase(DataTablesBase):
 
     def render(self, request, context, template = 'datatables/server_data_table.html'):
         context['table'] = self
+        template = self.template or template
         return direct_to_template(request, template, context, )
+
+    @property
+    def template(self):
+        template = getattr(self, '_template', None)
+        if template:
+            return template
+        if self.is_static():
+            return self.static_template
+        else:
+            return self.server_template
+
+    @template.setter
+    def template(self, template):
+        self._template = template
 
     @classmethod
     def make(cls, request, *args, **kwargs):
-        return cls(request, reverse(cls.source_path, args = args, kwargs = kwargs))
+        if cls.source_path:
+            url = reverse(cls.source_path, args = args, kwargs = kwargs)
+        else:
+            url = None
+        tbl = cls(request, url)
+        if tbl.is_static() and tbl.template == DEFAULT_TEMPLATE:
+            tbl.template = DEFAULT_STATIC_TEMPLATE
+        return tbl
+
+    def is_static(self):
+        return not self.source_path
+
+    @property
+    def queryset(self):
+        return getattr(self, '_queryset', None)
+
+    @queryset.setter
+    def queryset(self, queryset):
+        self._queryset = queryset
+
+    def rows(self, queryset=None):
+        if queryset is None:
+            queryset = self.queryset
+        return super(ModelDataTableBase, self).rows(queryset)
 
     def __unicode__(self):
         dictionary = {

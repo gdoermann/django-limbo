@@ -151,6 +151,8 @@ class Pages:
         return path.startswith(media_root)
 
     def parse_breadcrumbs(self):
+        if not hasattr(self.request, 'breadcrumbs'):
+            return
         self.parse_display()
         history = []
         for part in self.request.path.split('/'):

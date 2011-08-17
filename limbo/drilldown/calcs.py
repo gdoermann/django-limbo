@@ -1,6 +1,8 @@
 import calendar
 
 def year_options(queryset, date_field = 'date', max = None):
+    if not queryset:
+        return []
     queryset = queryset.order_by('-' + date_field)
     if not queryset.count():
         return []

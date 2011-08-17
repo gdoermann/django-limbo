@@ -1,9 +1,13 @@
 import datetime
+import traceback
 from django.utils.datastructures import SortedDict
 from django.template import defaultfilters
 from django.utils.encoding import smart_unicode
 from django.utils.safestring import mark_safe
 from limbo.apps.datatables.util import get_attr, test_rights
+import logging
+
+log = logging.getLogger(__file__)
 
 __all__ = [
     'ICON', 'CENTERED_ICON', 'CellRenderer', 'LinkRenderer',
@@ -28,14 +32,16 @@ class CellRenderer:
 
     def render(self, request, obj, path = None, form = None):
         value = self.value(request, obj, path, form)
-        if isinstance(value, (datetime.datetime, datetime.date)):
-            return defaultfilters.date(value)
-        elif isinstance(value, datetime.time):
-            return defaultfilters.time(value)
-        elif isinstance(value, datetime.timedelta):
-            return defaultfilters.timesince(value)
-        else:
-            return smart_unicode(value)
+        try:
+            if isinstance(value, (datetime.datetime, datetime.date)):
+                return defaultfilters.date(value)
+            elif isinstance(value, datetime.time):
+                return defaultfilters.time(value)
+            else:
+                return smart_unicode(value)
+        except Exception:
+            log.error(traceback.format_exc())
+            return str(value)
 
     def render_from_string(self, request, obj, s):
         return s

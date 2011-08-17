@@ -195,7 +195,10 @@ class DateDrillDown(template.Node):
             yr_span = class_span % 'dd_yr'
             yr_span_disabled = class_span % 'dd_yr dd_disabled'
             yr_span_selected = class_span % 'dd_yr dd_selected'
-            all_years = list(range(min(years), max(years) + 1))
+            if years:
+                all_years = list(range(min(years), max(years) + 1))
+            else:
+                all_years = years
             for year in all_years:
                 if year == self.date.year or year in years:
                     ystr = link_tag %(self.get_link(year), year)
