@@ -29,6 +29,29 @@ jQuery.fn.slugify = function(obj) {
     return this;
 };
 
+
+jQuery.fn.findOrIs = function( selector ) {
+    var obj = $(this),
+        result = obj.find(selector);
+    if (obj.is(selector)){
+        return result.add(obj);
+    }
+    return result;
+};
+
+
+jQuery.fn.enable = function() {
+    jQuery(this).removeClass('ui-state-disabled').find('input, button, select, textarea').attr('disabled', '');
+    return this;
+};
+
+jQuery.fn.disable = function() {
+    jQuery(this).addClass('ui-state-disabled').find('input, button, select, textarea').attr('disabled', 'disabled');
+    return this;
+};
+
+
+
 $(document).ajaxSend(function(event, xhr, settings) {
     function getCookie(name) {
         var cookieValue = null;
@@ -344,10 +367,18 @@ function Messages(){
     };
 
     this.append = function(message) {
-        var html = '<span title="' + message['message'] + '" class="message ' + message['type'] + ' ui-corner-all"><span class="msg_icon"></span>' + message['message'] + '</span>';
-        this.container.append(html);
-        this.pos = this.length();
-        this.refresh();
+        if ($.gritter != undefined){
+            console.log(message);
+            $.gritter.add({
+                title: message['type'],
+                text: message['message']
+            });
+        } else {
+            var html = '<span title="' + message['message'] + '" class="message ' + message['type'] + ' ui-corner-all"><span class="msg_icon"></span>' + message['message'] + '</span>';
+            this.container.append(html);
+            this.pos = this.length();
+            this.refresh();
+        }
         message.process();
     };
 
@@ -554,6 +585,7 @@ function ContingentForm(field, href){
     };
 
     this.process = function(data){
+        $('body').trigger('contingent_save', [data, this.field.attr("id")]);
         this.field.append('<option value="' + data.id + '">' + data.value + '</option>');
         this.field.combobox('set', data.value);
     };
@@ -806,8 +838,10 @@ LIMBO.ajaxForm = function(form, target){
             LIMBO.action_bars.success(form.find('.action_bars'));
             var id = form.attr('id'),
                 new_form = $(data).find('#' + id);
-            if (new_form.length != 0){
-                LIMBO.process($(this));
+                old_form = $('#' + id);
+            if (new_form.length > 0){
+                old_form.replaceWith(new_form);
+                LIMBO.process(new_form);
             }
         },
         error: function(err){
@@ -978,7 +1012,7 @@ LIMBO.process = function(obj){
     obj.find('.autocomplete select').combobox();
     obj.find('select.combobox').combobox();
     obj.find('select.multiselect').multiselect();
-    obj.find('.link_button').button();
+    obj.find('.link_button, .simple_button').button();
     obj.find('.download_button').download_button();
     obj.find('.accordion').accordion({
                 header: "h2",
@@ -1025,9 +1059,11 @@ LIMBO.process = function(obj){
         });
 
     LIMBO.stripe();
-    LIMBO.forms.refresh();
+    if (LIMBO.forms != undefined) {
+        LIMBO.forms.refresh();
+    }
     obj.find('.errorlist').addClass("ui-state-error").addClass("ui-corner-all");
-    obj.find('.ajaxform').each(function(){
+    obj.findOrIs('.ajaxform').each(function(){
         LIMBO.ajaxForm($(this));
     });
     obj.find(".media").media();
@@ -1056,7 +1092,11 @@ LIMBO.process = function(obj){
             section.toggle();
         }
         section.addClass('toggle_section_content ui-widget ui-widget-content ui-corner-all');
-    })
+    });
+    obj.find('.disabled').disable();
+    obj.find('.enabled').enable();
+    obj.find('select[readonly=readonly]').attr('disabled', 'disabled');
+
 };
 
 function Preloader(){
@@ -1119,7 +1159,7 @@ function StaticDataTable(sel) {
         'bDestroy':true,
         "bServerSide": false,
         "bJQueryUI": true,
-        "iDisplayLength": 50,
+        "iDisplayLength": 25,
         "sPaginationType": "full_numbers",
         "sSearch": "Search all:",
         "bStateSave":true
@@ -1148,7 +1188,7 @@ function StaticDataTable(sel) {
                         },
                     success: function(data){
                         oTable.oApi._fnProcessingDisplay(oTable.fnSettings(), false);
-                        LIMBO.messages.from_data(data);
+                        PPCC.messages.from_data(data);
                         if (data.success){
                             oTable.fnDraw();
                         } else {
@@ -1233,7 +1273,7 @@ function StaticDataTable(sel) {
             for (var index in parent.callbacks){
                 parent.callbacks[index](settings);
             }
-            LIMBO.process(parent.table);
+            PPCC.process(parent.table);
         }
 
     function setup_menu() {
@@ -1291,11 +1331,11 @@ function StaticDataTable(sel) {
             cache:true,
             success: function(data){
                 var new_row = oTable.fnOpen( row[0], data, 'details ui-widget ui-widget-content' );
-                LIMBO.process($(new_row));
+                PPCC.process($(new_row));
                 parent.inline_data[url] = data;
             }
         });
-        return LIMBO.LOADER;
+        return PPCC.LOADER;
     }
 
     function setup_inlines(){
@@ -1311,7 +1351,7 @@ function StaticDataTable(sel) {
                 } else {
                     var new_row = oTable.fnOpen( row[0], fnFormatDetails(url, row), 'details ui-widget ui-widget-content' );
                     new_row = $(new_row);
-                    LIMBO.process(new_row);
+                    PPCC.process(new_row);
                     c.addClass(cls);
                 }
             } catch (e) { console.log(e);
@@ -1377,17 +1417,16 @@ function process_static_data_tables(sel){
     if (!sel){
         sel = '.static_datatable';
     }
-    if (LIMBO.static_tables == undefined){
-        LIMBO.static_tables = new Object();
+    if (PPCC.static_tables == undefined){
+        PPCC.static_tables = new Object();
     }
     var obj = $(sel);
     obj.each(function(index, element){
         var e = $(element);
         var tble = e.find('table');
-        LIMBO.static_tables[tble.attr('id')] = new StaticDataTable(element);
+        PPCC.static_tables[tble.attr('id')] = new StaticDataTable(element);
     });
 }
-
 _preprocess.push(process_static_data_tables);
 
 function ServerDataTable(sel) {

@@ -34,6 +34,37 @@ function create_uuid() {
             var $$ = this.obj = this.$$ = $(obj);
             var parent = this;
 
+            function refresh_pickers(){
+                parent.start_end.datepicker('destroy');
+                parent.datepickers = parent.start_end.datepicker({
+                    defaultDate: "+1d",
+                    changeMonth: true,
+                    numberOfMonths: 1,
+                    onClose:function(){
+                        if ($(this).val() != ''){
+                            parent.picker.find('.ui-state-active').removeClass('ui-state-active');
+                            parent.picker.find('input[checked=checked').attr('checked', '');
+                        }
+                    },
+                    onSelect: function(selectedDate){
+                        var option;
+                        if (this.id == "id_start_date" || this.id == "id_qa_table-start_date"){
+                            option = "minDate";
+                        }else{
+                            option = "maxDate";
+                        }
+                        //var option = this.id == "id_start_date" ? "minDate" : "maxDate",
+                        instance = $( this ).data( "datepicker" ),
+                        date = $.datepicker.parseDate(
+                            instance.settings.dateFormat ||
+                            $.datepicker._defaults.dateFormat,
+                            selectedDate, instance.settings
+                        );
+                        parent.datepickers.not( this ).datepicker( "option", option, date );
+                    }
+                });
+            }
+
             function refresh(){
                 parent.picker = obj;
                 parent.start = obj.parent().siblings().children('.start_date');
@@ -42,14 +73,9 @@ function create_uuid() {
                 parent.picker.find('input').click(function(){
                     parent.start.val('');
                     parent.end.val('');
+                    refresh_pickers();
                 });
-
-                parent.start_end.change(function(){
-                    if ($(this).val() != ''){
-                        parent.picker.find('.ui-state-active').removeClass('ui-state-active');
-                        parent.picker.find('input[checked=checked').attr('checked', '');
-                    }
-                });
+                refresh_pickers();
             }
 
             refresh();
