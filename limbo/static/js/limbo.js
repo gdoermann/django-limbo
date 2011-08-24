@@ -29,6 +29,29 @@ jQuery.fn.slugify = function(obj) {
     return this;
 };
 
+
+jQuery.fn.findOrIs = function( selector ) {
+    var obj = $(this),
+        result = obj.find(selector);
+    if (obj.is(selector)){
+        return result.add(obj);
+    }
+    return result;
+};
+
+
+jQuery.fn.enable = function() {
+    jQuery(this).removeClass('ui-state-disabled').find('input, button, select, textarea').attr('disabled', '');
+    return this;
+};
+
+jQuery.fn.disable = function() {
+    jQuery(this).addClass('ui-state-disabled').find('input, button, select, textarea').attr('disabled', 'disabled');
+    return this;
+};
+
+
+
 $(document).ajaxSend(function(event, xhr, settings) {
     function getCookie(name) {
         var cookieValue = null;
@@ -344,10 +367,18 @@ function Messages(){
     };
 
     this.append = function(message) {
-        var html = '<span title="' + message['message'] + '" class="message ' + message['type'] + ' ui-corner-all"><span class="msg_icon"></span>' + message['message'] + '</span>';
-        this.container.append(html);
-        this.pos = this.length();
-        this.refresh();
+        if ($.gritter != undefined){
+            console.log(message);
+            $.gritter.add({
+                title: message['type'],
+                text: message['message']
+            });
+        } else {
+            var html = '<span title="' + message['message'] + '" class="message ' + message['type'] + ' ui-corner-all"><span class="msg_icon"></span>' + message['message'] + '</span>';
+            this.container.append(html);
+            this.pos = this.length();
+            this.refresh();
+        }
         message.process();
     };
 
@@ -554,6 +585,7 @@ function ContingentForm(field, href){
     };
 
     this.process = function(data){
+        $('body').trigger('contingent_save', [data, this.field.attr("id")]);
         this.field.append('<option value="' + data.id + '">' + data.value + '</option>');
         this.field.combobox('set', data.value);
     };
@@ -806,8 +838,10 @@ LIMBO.ajaxForm = function(form, target){
             LIMBO.action_bars.success(form.find('.action_bars'));
             var id = form.attr('id'),
                 new_form = $(data).find('#' + id);
-            if (new_form.length != 0){
-                LIMBO.process($(this));
+                old_form = $('#' + id);
+            if (new_form.length > 0){
+                old_form.replaceWith(new_form);
+                LIMBO.process(new_form);
             }
         },
         error: function(err){
@@ -978,7 +1012,7 @@ LIMBO.process = function(obj){
     obj.find('.autocomplete select').combobox();
     obj.find('select.combobox').combobox();
     obj.find('select.multiselect').multiselect();
-    obj.find('.link_button').button();
+    obj.find('.link_button, .simple_button').button();
     obj.find('.download_button').download_button();
     obj.find('.accordion').accordion({
                 header: "h2",
@@ -1025,9 +1059,11 @@ LIMBO.process = function(obj){
         });
 
     LIMBO.stripe();
-    LIMBO.forms.refresh();
+    if (LIMBO.forms != undefined) {
+        LIMBO.forms.refresh();
+    }
     obj.find('.errorlist').addClass("ui-state-error").addClass("ui-corner-all");
-    obj.find('.ajaxform').each(function(){
+    obj.findOrIs('.ajaxform').each(function(){
         LIMBO.ajaxForm($(this));
     });
     obj.find(".media").media();
@@ -1056,7 +1092,11 @@ LIMBO.process = function(obj){
             section.toggle();
         }
         section.addClass('toggle_section_content ui-widget ui-widget-content ui-corner-all');
-    })
+    });
+    obj.find('.disabled').disable();
+    obj.find('.enabled').enable();
+    obj.find('select[readonly=readonly]').attr('disabled', 'disabled');
+
 };
 
 function Preloader(){
@@ -1088,6 +1128,306 @@ function DataTablesCallBack(callback){
     this.fn = this;
     this.call = callback;
 }
+
+function StaticDataTable(sel) {
+    var parent = this;
+    this.sel = sel;
+    var ele = $(sel);
+    var table = ele.find('table:first');
+    this.advanced_search = $("<div class='dataTables_adv_filter'></div>")
+    this.ele = ele;
+    var $$ = this.$$ = $(ele);
+    this.columns = {};
+    this.rcolumns = {};
+    this.inline_data = {};
+
+    this.aoColumns = [];
+    this.$$.find('ol.col_attrs li').each(function(index, e){
+        try {
+            var d = JSON.parse($(e).html());
+            parent.aoColumns.push(d);
+            parent.columns[index] = $(e).attr('title');
+            parent.rcolumns[$(e).attr('title')] = index;
+        } catch (e){
+            console.log(e);
+        }
+    });
+    this.callbacks = new Array();
+
+    var tbl_args = {
+        "bProcessing": true,
+        'bDestroy':true,
+        "bServerSide": false,
+        "bJQueryUI": true,
+        "iDisplayLength": 25,
+        "sPaginationType": "full_numbers",
+        "sSearch": "Search all:",
+        "bStateSave":true
+    };
+
+    if (this.aoColumns.length != 0){
+        tbl_args["aoColumns"] = this.aoColumns;
+    }
+
+    var oTable = $(table).dataTable( tbl_args );
+
+    var oSettings = oTable.fnSettings();
+    this.oSettings = oSettings;
+    this.oServerData = oSettings.fnServerData;
+
+    function setup_forms(){
+        this.editable = false;
+        if ($$.find(".action_bar")){
+            this.editable = true;
+            this.form = ele.find('form');
+            this.form_obj = $(this.form);
+            this.form_obj.ajaxForm({
+                    url: parent.source,
+                    beforeSubmit: function(){
+                        oTable.oApi._fnProcessingDisplay(oTable.fnSettings(), true);
+                        },
+                    success: function(data){
+                        oTable.oApi._fnProcessingDisplay(oTable.fnSettings(), false);
+                        PPCC.messages.from_data(data);
+                        if (data.success){
+                            oTable.fnDraw();
+                        } else {
+                            alert (data.errors);
+                        }
+                    },
+                    dataType:'json'
+                    });
+        }
+    }
+
+    function individual_filters() {
+
+        function filter_index(input){
+            var vindex = parent.filters.index(input),
+                visibles = 0;
+            for (var index in parent.oSettings.aoColumns){
+                var col = parent.oSettings.aoColumns[index];
+                if (col.bVisible){
+                    visibles += 1;
+                }
+                if (visibles == vindex+1){
+                    return col.iDataSort;
+                }
+            }
+            return vindex;
+        }
+
+        parent.filters.keyup( function () {
+            /* Filter on the column (the index) of this element */
+            parent.oTable.fnFilter( this.value, filter_index(this) );
+        } );
+
+        parent.filters.change( function () {
+            /* Filter on the column (the index) of this element */
+            parent.oTable.fnFilter( this.value, filter_index(this) );
+        } );
+
+        /*
+         * Support functions to provide a little bit of 'user friendlyness' to the textboxes in
+         * the footer
+         */
+        parent.filters.each( function (i) {
+            parent.asInitVals[i] = this.value;
+            $(this).addClass("search_init");
+        } );
+
+        parent.filters.focus( function () {
+            if ( $(this).hasClass("search_init") )
+            {
+                $(this).removeClass("search_init");
+                this.value = "";
+            }
+        } );
+
+        parent.filters.blur( function() {
+            if ( this.value == "" ) {
+                $(this).addClass("search_init");
+                this.value = parent.asInitVals[parent.filters.index(this)];
+            }
+        } );
+
+        // Reload data from saved state
+        if (parent.oSettings.oLoadedState != null && parent.oSettings.oLoadedState['aaSearchCols'] != undefined){
+            var pSearch = parent.oSettings.oLoadedState['aaSearchCols'];
+            for (var index in parent.columns){
+                parent.filters.each(function(){
+                    if ($(this).attr('title') == parent.columns[index] && pSearch[index] != undefined){
+                        var val = pSearch[index][0];
+                        if (val != "" && val!= null && val != undefined){
+                            $(this).val(val);
+                            $(this).removeClass("search_init");
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    function table_callbacks(settings){
+            // Just a pass through to call all methods in the parent
+            for (var index in parent.callbacks){
+                parent.callbacks[index](settings);
+            }
+            PPCC.process(parent.table);
+        }
+
+    function setup_menu() {
+        var menu_html = parent.config.find('.col_menu');
+        parent.ele.find(".dataTables_filter").append(menu_html);
+        parent.menu = parent.ele.find(".dataTables_filter .col_menu");
+        parent.menu.button();
+        parent.menu_cols = parent.config.find('.col_menu_html');
+        var col_menu_html = parent.menu_cols.html();
+        var menu = parent.fgmenu = parent.menu.fgmenu({
+                content: col_menu_html,
+                positionOpts: {
+                    posX: 'left',
+                    posY: 'bottom',
+                    offsetY:2,
+                    directionH:'left'},
+                showSpeed: 300,
+                linkToFront: true
+            });
+        menu.container.find('a').each(function(){
+            function update_disabled(obj){
+                var col = parent.rcolumns[obj.attr('title')],
+                    bVis;
+                if (oTable.fnSettings().aoColumns && oTable.fnSettings().aoColumns[col]){
+                    bVis = oTable.fnSettings().aoColumns[col].bVisible;
+                } else {
+                    bVis = true;
+                }
+                if (bVis){
+                    obj.parent().removeClass("ui-state-disabled");
+                } else {
+                    obj.parent().addClass("ui-state-disabled");
+                }
+            }
+            $(this).click(function(){
+                var col = parent.rcolumns[$(this).attr('title')],
+                    bVis;
+                if (oTable.fnSettings().aoColumns && oTable.fnSettings().aoColumns[col]){
+                    bVis = oTable.fnSettings().aoColumns[col].bVisible;
+                } else {
+                    bVis = true;
+                }
+                var newVis = bVis ? false : true;
+                oTable.fnSetColumnVis( col, newVis);
+                update_disabled($(this));
+                return false;
+           });
+            update_disabled($(this));
+        });
+    }
+
+    function fnFormatDetails ( url, row ){
+        $.ajax({
+            url: url,
+            cache:true,
+            success: function(data){
+                var new_row = oTable.fnOpen( row[0], data, 'details ui-widget ui-widget-content' );
+                PPCC.process($(new_row));
+                parent.inline_data[url] = data;
+            }
+        });
+        return PPCC.LOADER;
+    }
+
+    function setup_inlines(){
+        parent.ele.find('.inline_row').click(function(){
+            var c = $(this),
+                row = c.parents('tr'),
+                url = c.attr('href'),
+                cls = 'details_open';
+            try {
+                if (c.hasClass(cls)){
+                    oTable.fnClose( row[0] );
+                    c.removeClass(cls);
+                } else {
+                    var new_row = oTable.fnOpen( row[0], fnFormatDetails(url, row), 'details ui-widget ui-widget-content' );
+                    new_row = $(new_row);
+                    PPCC.process(new_row);
+                    c.addClass(cls);
+                }
+            } catch (e) { console.log(e);
+            } finally {
+
+            }
+            return false;
+        });
+    }
+    this.callbacks.push(setup_inlines);
+
+    function setup_advanced_search(){
+        var adv_search_config = parent.config.find('.search_form');
+        var adv_search = parent.advanced_search;
+        if (adv_search_config.length > 0){
+            adv_search.append(adv_search_config.html());
+            adv_search.insertAfter(ele.find('.dataTables_filter'));
+            // Add search button
+            var adv_search_btn = parent.advanced_search_btn = $('<button class="dataTables_adv_filter_btn"><span class="ui-icon ui-icon-search"></span></button>');
+            adv_search_btn.insertBefore(parent.menu).button().click(function(){
+                adv_search.toggle();
+                return false;
+            });
+            adv_search.find('input, select, textarea').change(function(){
+                parent.process();
+            });
+            adv_search_config.remove();
+        }
+        adv_search.hide().addClass('ui-widget ui-widget-content ui-corner-all');
+    }
+
+    this.process = function(){
+        oTable.fnDraw();
+    };
+
+    /* This handles all callback stuff and makes it easier to
+     * just pass a function in to be called upon draw of the table.
+    */
+    this.add_callback = function(callback){
+        this.callbacks.push(callback);
+    };
+
+    var call_all = new DataTablesCallBack(table_callbacks);
+    this.call_all = call_all;
+//    oSettings.aoDrawCallback.push(call_all);
+
+    this.ele = ele;
+    this.table = table;
+    this.oTable = oTable;
+    this.asInitVals = new Array();
+    this.filters = parent.$$.find("tfoot input, tfoot select");
+    individual_filters();
+    this.config = this.$$.find('.server_table_config');
+    this._config_html = this.config.html();
+    setup_menu();
+    setup_inlines();
+    setup_advanced_search();
+    setup_forms();
+//    this.config.remove();
+}
+
+function process_static_data_tables(sel){
+    if (!sel){
+        sel = '.static_datatable';
+    }
+    if (PPCC.static_tables == undefined){
+        PPCC.static_tables = new Object();
+    }
+    var obj = $(sel);
+    obj.each(function(index, element){
+        var e = $(element);
+        var tble = e.find('table');
+        PPCC.static_tables[tble.attr('id')] = new StaticDataTable(element);
+    });
+}
+_preprocess.push(process_static_data_tables);
 
 function ServerDataTable(sel) {
     var parent = this;
@@ -1134,6 +1474,7 @@ function ServerDataTable(sel) {
 
     var tbl_args = {
         "bProcessing": true,
+        'bDestroy':true,
         "bServerSide": true,
         "sAjaxSource": source,
         "bJQueryUI": true,
@@ -1192,14 +1533,29 @@ function ServerDataTable(sel) {
 
     function individual_filters() {
 
+        function filter_index(input){
+            var vindex = parent.filters.index(input),
+                visibles = 0;
+            for (var index in parent.oSettings.aoColumns){
+                var col = parent.oSettings.aoColumns[index];
+                if (col.bVisible){
+                    visibles += 1;
+                }
+                if (visibles == vindex+1){
+                    return col.iDataSort;
+                }
+            }
+            return vindex;
+        }
+
         parent.filters.keyup( function () {
             /* Filter on the column (the index) of this element */
-            parent.oTable.fnFilter( this.value, parent.filters.index(this) );
+            parent.oTable.fnFilter( this.value, filter_index(this) );
         } );
 
         parent.filters.change( function () {
             /* Filter on the column (the index) of this element */
-            parent.oTable.fnFilter( this.value, parent.filters.index(this) );
+            parent.oTable.fnFilter( this.value, filter_index(this) );
         } );
 
         /*

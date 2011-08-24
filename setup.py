@@ -40,9 +40,8 @@ for dirpath, dirnames, filenames in os.walk(limbo_dir):
     elif filenames:
         data_files.append([dirpath, [os.path.join(dirpath, f) for f in filenames]])
 
-version = __import__('limbo').get_version()
+version = __import__(limbo_dir).get_version()
 
-version = '1.7.1'
 setup(
     name='django-limbo',
     version=version,
