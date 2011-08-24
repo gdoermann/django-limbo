@@ -1096,6 +1096,7 @@ LIMBO.process = function(obj){
     obj.find('.disabled').disable();
     obj.find('.enabled').enable();
     obj.find('select[readonly=readonly]').attr('disabled', 'disabled');
+    obj.find('.dataTables_wrapper table').css('width', '100%'); // TODO: FIND THE REAL PROBLEM!
 
 };
 
@@ -1741,6 +1742,7 @@ function ServerDataTable(sel) {
     setup_advanced_search();
     setup_forms();
 //    this.config.remove();
+    table.css('width', '100%');
 }
 
 function process_server_data_tables(sel){
