@@ -31,14 +31,18 @@ class ContingentForms(dict):
 
 class WidgetSetter:
 
-    def map_widget_defaults(self):
-        self.map_widgets(SelectMultiple, AdvancedMultiSelect)
-        self.map_widgets(Select, Combobox)
-        self.map_widgets(Textarea, AutoResizeTextarea)
-        self.map_widgets(DateInput, DatePicker)
+    def map_widget_defaults(self, include=None, exclude=[]):
+        self.map_widgets(SelectMultiple, AdvancedMultiSelect, include, exclude)
+        self.map_widgets(Select, Combobox, include, exclude)
+        self.map_widgets(Textarea, AutoResizeTextarea, include, exclude)
+        self.map_widgets(DateInput, DatePicker, include, exclude)
 
-    def map_widgets(self, from_widget, to_widget):
+    def map_widgets(self, from_widget, to_widget, include=None, exclude=[]):
         for name, field in self.fields.items():
+            if include is not None and name not in include:
+                continue
+            elif exclude and name in exclude:
+                continue
             # We DON'T want isinstance
             fw = callable(from_widget) and from_widget() or from_widget
             if type(fw) == type(field.widget):
@@ -178,3 +182,32 @@ class CSVFormSet(formsets.BaseFormSet):
             data[key] = reformat(value)
         writer.writerow(data)
 
+
+class DateFilterForm(Form, WidgetSetter):
+    def __init__(self, *args, **kwargs):
+        self.max_range = kwargs.pop('max_range', datetime.timedelta(days=32))
+        super(DateFilterForm, self).__init__(*args, **kwargs)
+        self.map_widget_defaults()
+
+    picker = DateRangeFieldGenerator.picker(initial=TimeRangePicker.DEFAULT_CHOICES.TODAY)
+    start_date, end_date = DateRangeFieldGenerator.start_end()
+
+    @property
+    def start(self):
+        start = self.is_valid() and self.cleaned_data['start_date'] or None
+        if start:
+            start = datetime.datetime.combine(start, datetime.time(0))
+        return start
+
+    @property
+    def end(self):
+        end = self.is_valid() and self.cleaned_data['end_date'] or None
+        if end:
+            end = datetime.datetime.combine(end, datetime.time(23,59,59))
+        return end
+
+    def clean(self):
+        data = DateRangeFieldGenerator.clean(self.cleaned_data, max_range=self.max_range,
+                     default_range=TimeRangePicker.default_range(
+                         TimeRangePicker.DEFAULT_CHOICES.TODAY))
+        return data

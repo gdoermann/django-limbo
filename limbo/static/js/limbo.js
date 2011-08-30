@@ -1007,7 +1007,9 @@ LIMBO.process = function(obj){
     obj.find('.buttonset').buttonset();
     obj.find('.date input').datepicker();
     obj.find('.datepicker').datepicker();
-    obj.find('.timepicker').timepicker();
+    if (obj.find('.timepicker') && obj.find('.timepicker').timepicker){
+     obj.find('.timepicker').timepicker();
+    }
     obj.find('.autoresize').autoResize().addClass('ui-widget').addClass('ui-widget-content');
     obj.find('.autocomplete select').combobox();
     obj.find('select.combobox').combobox();
@@ -1066,7 +1068,9 @@ LIMBO.process = function(obj){
     obj.findOrIs('.ajaxform').each(function(){
         LIMBO.ajaxForm($(this));
     });
-    obj.find(".media").media();
+    if (obj.find(".media").media){
+        obj.find(".media").media();
+    }
     obj.find('div.media').css('margin', 'auto');
 //    process_fullscreen(obj);
     process_random_generators(obj);
@@ -1189,7 +1193,7 @@ function StaticDataTable(sel) {
                         },
                     success: function(data){
                         oTable.oApi._fnProcessingDisplay(oTable.fnSettings(), false);
-                        PPCC.messages.from_data(data);
+                        LIMBO.messages.from_data(data);
                         if (data.success){
                             oTable.fnDraw();
                         } else {
@@ -1274,7 +1278,7 @@ function StaticDataTable(sel) {
             for (var index in parent.callbacks){
                 parent.callbacks[index](settings);
             }
-            PPCC.process(parent.table);
+            LIMBO.process(parent.table);
         }
 
     function setup_menu() {
@@ -1332,11 +1336,11 @@ function StaticDataTable(sel) {
             cache:true,
             success: function(data){
                 var new_row = oTable.fnOpen( row[0], data, 'details ui-widget ui-widget-content' );
-                PPCC.process($(new_row));
+                LIMBO.process($(new_row));
                 parent.inline_data[url] = data;
             }
         });
-        return PPCC.LOADER;
+        return LIMBO.LOADER;
     }
 
     function setup_inlines(){
@@ -1352,7 +1356,7 @@ function StaticDataTable(sel) {
                 } else {
                     var new_row = oTable.fnOpen( row[0], fnFormatDetails(url, row), 'details ui-widget ui-widget-content' );
                     new_row = $(new_row);
-                    PPCC.process(new_row);
+                    LIMBO.process(new_row);
                     c.addClass(cls);
                 }
             } catch (e) { console.log(e);
@@ -1418,14 +1422,14 @@ function process_static_data_tables(sel){
     if (!sel){
         sel = '.static_datatable';
     }
-    if (PPCC.static_tables == undefined){
-        PPCC.static_tables = new Object();
+    if (LIMBO.static_tables == undefined){
+        LIMBO.static_tables = new Object();
     }
     var obj = $(sel);
     obj.each(function(index, element){
         var e = $(element);
         var tble = e.find('table');
-        PPCC.static_tables[tble.attr('id')] = new StaticDataTable(element);
+        LIMBO.static_tables[tble.attr('id')] = new StaticDataTable(element);
     });
 }
 _preprocess.push(process_static_data_tables);

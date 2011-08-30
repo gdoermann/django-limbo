@@ -11,6 +11,7 @@
             {%  csrf_token %}
             {%  include 'forms/stub.fieldsets.html' %}
             {% include 'forms/form_meta.html' %}
+            {% include 'forms/actionbar.html' %}
         </form>
         </div>
     {% else %}
@@ -22,6 +23,7 @@
             {%  csrf_token %}
             {{ form.as_p }}
             {% include 'forms/form_meta.html' %}
+            {% include 'forms/actionbar.html' %}
         </form>
         </div>
     {%  endif %}

@@ -6,6 +6,7 @@ from django.forms.util import ValidationError
 from django.template.defaultfilters import slugify
 from django.utils.translation import ugettext_lazy as _
 from limbo import widgets
+from limbo.timeblock.logic import TimeBlock
 from limbo.validation import valid_sms, clean_sms
 import datetime
 
@@ -284,6 +285,8 @@ class DateRangeFieldGenerator:
                 # If picker was chosen and all time is a valid option, it will return none as start and end
                 raise ValidationError('Date range required: %s - %s' %(start_date, end_date))
         if  start and end:
+            tb = TimeBlock(start, end)
+            start, end = tb.start, tb.end
             if start > end:
                 raise ValidationError('Start date must be before end date.')
             elif max_range and end - start > max_range:

@@ -4,7 +4,7 @@
     LIMBO = function (a){
         var parent = this;
         this.USER = "{{request.user.get_profile.shortname}}";
-        this.STATIC_BASE = '{{ SITE_MEDIA_ROOT }}';
+        this.STATIC_BASE = '{% firstof SITE_MEDIA_ROOT MEDIA_URL settings.MEDIA_URL '/' %}';
         this.URLS = {% if URLS %}{{URLS|safe}}{% else %}{}{% endif %};
         this.DATA = {}
         {% for key, value in ajax_data.items %}
