@@ -1,5 +1,4 @@
 import csv
-from xml.etree.ElementTree import Element
 from django.shortcuts import render_to_response
 from django.utils.datastructures import SortedDict
 from django.contrib import messages
@@ -30,6 +29,7 @@ class FileImportError(ValueError):
 
     @property
     def xml(self):
+        from xml.etree.ElementTree import Element
         e = Element("ImportError")
         lnode = Element("Line")
         lnode.text = self.line
