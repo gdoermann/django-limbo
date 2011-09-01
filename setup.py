@@ -2,6 +2,7 @@
 __author__ = 'gdoermann'
 
 from distutils.core import setup
+from setuptools import find_packages
 from distutils.command.install import INSTALL_SCHEMES
 import os
 import sys
@@ -54,7 +55,7 @@ setup(
     """,
     license='https://github.com/gdoermann/django-limbo/blob/master/MIT-LICENSE.txt',
     platform=['Any'],
-    packages=packages,
+    packages=find_packages(),
     data_files = data_files,
     requires=['django', ],
     classifiers = [
@@ -72,4 +73,4 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: WSGI',
         'Topic :: Software Development :: Libraries :: Python Modules',
    ],
-     )
+)
