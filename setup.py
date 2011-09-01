@@ -54,7 +54,6 @@ setup(
     This also includes altered code from django snippets and code I have copied directly from others.
     """,
     license='https://github.com/gdoermann/django-limbo/blob/master/MIT-LICENSE.txt',
-    platform=['Any'],
     packages=find_packages(),
     data_files = data_files,
     requires=['django', ],
