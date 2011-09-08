@@ -5,6 +5,8 @@ import re
 from string import zfill
 
 POPULATION = [chr(x) for x in range(256)]
+NULL = ''
+UNDERSCORE_PATTERN = re.compile('(?<=[a-z])([A-Z])')
 def md5_hash(txt):
     """ Quick md5 hash of any given txt """
     return hashlib.md5(txt).hexdigest()
@@ -73,11 +75,28 @@ def get_unique_username(email):
             username = first_username
     return username
 
-def camelcase(text):
-    cc = ''
-    for each in text.replace(' ', '_').replace('-', '_').split('_'):
-        cc += each.capitalize()
-    return cc
+def strip_underscores(str, **attribs):
+    return str.replace('_', NULL)
+
+
+def insert_underscores(str, **attribs):
+    return UNDERSCORE_PATTERN.sub('_\\1', str)
+
+
+def to_camel_case(str, **attribs):
+    if is_magic(str):
+        return str
+    else:
+        return strip_underscores(from_camel_case(str).title())
+
+def is_magic(str):
+    return str in ['self', 'cls'] or str.startswith('__') and str.endswith('__')
+
+def from_camel_case(str, **attribs):
+    if is_magic(str):
+        return str
+    else:
+        return insert_underscores(str).lower()
 
 def unslugify(string):
     return string.replace('-', ' ').replace('_', ' ')
