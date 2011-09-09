@@ -36,7 +36,6 @@ class BaseTestCase(unittest.TestCase):
         self.not_implemented("POST test not implemented")
 
 
-
 class ViewTestCase(BaseTestCase):
     AUTO_TEST_LINKS = True
     class CODES:

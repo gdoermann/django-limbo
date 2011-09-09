@@ -1,3 +1,4 @@
+import inspect
 from django.db import models
 from django.db.models import Q
 import datetime
@@ -89,24 +90,35 @@ class CustomManager(models.Manager):
     def get_query_set(self):
         return self.queryset_class(self.model, using=self._db)
 
-def callable_attribute(obj, attribute):
+def callable_attribute(attribute, parent=None, context = None):
     """ Tries calling the attribute as a normal method, and then as a class method """
-    try:
-        return attribute()
-    except TypeError:
-        return attribute(obj)
+    args = []
+    kwargs = {}
+    argspec = inspect.getargspec(attribute)
+    func_args = argspec.args
+    if func_args[0] in ['obj', ] and parent:
+        args.append(parent)
+    if 'context' in func_args:
+        kwargs['context'] = context
+    elif context:
+        for key, value in context.items():
+            if key in func_args:
+                kwargs[key] = value
+    return attribute(*args, **kwargs)
 
-def model_attribute(model, attribute):
+def model_attribute(model, attribute, context = None):
     """ This takes a django model and an attribute string path as
         arguments and returns the actual attribute off of the model.
         The attribute may also be a callable.
     """
     if callable(attribute):
-        return callable_attribute(model, attribute)
+        return callable_attribute(attribute, parent=model, context=context)
+    elif not isinstance(attribute, basestring):
+        return attribute
     else:
         obj = model
         for attr in attribute.split('__'):
             if callable(obj):
-                obj = obj()
+                obj = callable_attribute(obj, context=context)
             obj = getattr(obj, attr)
         return obj
