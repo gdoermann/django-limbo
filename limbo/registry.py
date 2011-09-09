@@ -23,13 +23,16 @@ class RegistryBase:
         self.register(name, value)
 
     def __getitem__(self, item):
-        return self.get(item)
+        return self.reg[item]
 
     def __setitem__(self, key, value):
-        self.set(key, value)
+        self.reg[key] = value
 
     def all(self):
         return self.values()
+
+    def items(self):
+        return self.reg.items()
 
     def values(self):
         return self.reg.values()

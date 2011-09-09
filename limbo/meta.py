@@ -34,8 +34,8 @@ class DeclarativeFieldsMetaclass(type):
             declaritive_types = attrs['Meta'].declaritive_types
         else:
             declaritive_types = {'base_fields':DeclaredField}
-        for name, field_cls in declaritive_types.items():
-            attrs[name] = get_declared_fields(bases, attrs, name, field_cls=field_cls)
+        for field_name, field_cls in declaritive_types.items():
+            attrs[field_name] = get_declared_fields(bases, attrs, field_name, field_cls=field_cls)
         new_class = super(DeclarativeFieldsMetaclass,
                      cls).__new__(cls, name, bases, attrs)
         return new_class

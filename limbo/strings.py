@@ -83,11 +83,19 @@ def insert_underscores(str, **attribs):
     return UNDERSCORE_PATTERN.sub('_\\1', str)
 
 
+def strip_dashes(str, **attribs):
+    return str.replace('-', NULL)
+
+
+def insert_dashes(str, **attribs):
+    return UNDERSCORE_PATTERN.sub('-\\1', str)
+
+
 def to_camel_case(str, **attribs):
     if is_magic(str):
         return str
     else:
-        return strip_underscores(from_camel_case(str).title())
+        return strip_dashes(strip_underscores(from_camel_case(str).title()))
 
 def is_magic(str):
     return str in ['self', 'cls'] or str.startswith('__') and str.endswith('__')
@@ -97,6 +105,12 @@ def from_camel_case(str, **attribs):
         return str
     else:
         return insert_underscores(str).lower()
+
+def from_camel_case_dashes(str, **attribs):
+    if is_magic(str):
+        return str
+    else:
+        return insert_dashes(str).lower()
 
 def unslugify(string):
     return string.replace('-', ' ').replace('_', ' ')
