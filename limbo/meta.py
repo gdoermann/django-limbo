@@ -30,10 +30,23 @@ class DeclarativeFieldsMetaclass(type):
     It will find all objects that extend DeclaredField.
     """
     def __new__(cls, name, bases, attrs):
-        if attrs.has_key('Meta') and hasattr(attrs['Meta'], "declaritive_types"):
-            declaritive_types = attrs['Meta'].declaritive_types
+        meta = attrs.get('Meta')
+        if meta and hasattr(meta, "declaritive_types"):
+            declaritive_types = meta.declaritive_types
         else:
             declaritive_types = {'base_fields':DeclaredField}
+
+        for base in bases:
+            if hasattr(base, 'Meta'):
+                base_meta = getattr(base, 'Meta')
+                if not meta:
+                    meta = base_meta
+                for attr in dir(base_meta):
+                    if attr.startswith('_') or attr == 'declaritive_types':
+                        continue
+                    if not hasattr(meta, attr):
+                        setattr(meta, attr, getattr(base_meta, attr))
+
         for field_name, field_cls in declaritive_types.items():
             attrs[field_name] = get_declared_fields(bases, attrs, field_name, field_cls=field_cls)
         new_class = super(DeclarativeFieldsMetaclass,
