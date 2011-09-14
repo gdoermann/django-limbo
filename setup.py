@@ -2,10 +2,28 @@
 __author__ = 'gdoermann'
 
 from distutils.core import setup
-from setuptools import find_packages
+from distutils.command.install_data import install_data
 from distutils.command.install import INSTALL_SCHEMES
 import os
 import sys
+
+class osx_install_data(install_data):
+    # On MacOS, the platform-specific lib dir is /System/Library/Framework/Python/.../
+    # which is wrong. Python 2.5 supplied with MacOS 10.5 has an Apple-specific fix
+    # for this in distutils.command.install_data#306. It fixes install_lib but not
+    # install_data, which is why we roll our own install_data class.
+
+    def finalize_options(self):
+        # By the time finalize_options is called, install.install_lib is set to the
+        # fixed directory, so we set the installdir to install_lib. The
+        # install_data class uses ('install_data', 'install_dir') instead.
+        self.set_undefined_options('install', ('install_lib', 'install_dir'))
+        install_data.finalize_options(self)
+
+if sys.platform == "darwin":
+    cmdclasses = {'install_data': osx_install_data}
+else:
+    cmdclasses = {'install_data': install_data}
 
 def fullsplit(path, result=None):
     """
@@ -20,7 +38,8 @@ def fullsplit(path, result=None):
     if head == path:
         return result
     return fullsplit(head, [tail] + result)
-
+# Compile the list of packages available, because distutils doesn't have
+# an easy way to do this.
 packages, data_files = [], []
 root_dir = os.path.dirname(__file__)
 if root_dir != '':
@@ -40,6 +59,11 @@ for dirpath, dirnames, filenames in os.walk(limbo_dir):
         packages.append('.'.join(fullsplit(dirpath)))
     elif filenames:
         data_files.append([dirpath, [os.path.join(dirpath, f) for f in filenames]])
+# Small hack for working with bdist_wininst.
+# See http://mail.python.org/pipermail/distutils-sig/2004-August/004134.html
+if len(sys.argv) > 1 and sys.argv[1] == 'bdist_wininst':
+    for file_info in data_files:
+        file_info[0] = '\\PURELIB\\%s' % file_info[0]
 
 version = __import__(limbo_dir).get_version()
 
@@ -54,9 +78,11 @@ setup(
     This also includes altered code from django snippets and code I have copied directly from others.
     """,
     license='https://github.com/gdoermann/django-limbo/blob/master/MIT-LICENSE.txt',
-    packages=find_packages(),
+    packages=packages,
+    cmdclass = cmdclasses,
     data_files = data_files,
-    requires=['django', ],
+    include_package_data=True,
+    install_requires=['django', ],
     classifiers = [
         'Development Status :: 4 - Beta',
         'Environment :: Web Environment',
