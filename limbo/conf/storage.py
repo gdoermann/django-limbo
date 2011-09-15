@@ -91,7 +91,7 @@ class BaseStorage(object):
             self.properties[name] = Properties(os.path.join(base_path, *path))
             setattr(self, name, self.properties[name])
             self.check(os.path.dirname(self.properties[name].filepath))
-            self.reload(name)
+        self.reload()
 
 
     def reload(self, name=None):
