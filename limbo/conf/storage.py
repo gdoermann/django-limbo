@@ -21,9 +21,9 @@ class Properties(dict):
             f = open(self.filepath, 'w')
             f.close()
         self.file = open(self.filepath, 'r+')
-        s = self.file.read()
         try:
-            self.update(pickle.loads(s))
+            objs = pickle.load(self.file)
+            self.update(dict(objs))
         except Exception:
             pass
 
@@ -33,7 +33,7 @@ class Properties(dict):
         try:
             self.file.close()
             self.file = open(self.filepath, 'w')
-            s = pickle.dumps(self)
+            s = pickle.dumps(self.items())
             self.file.write(s)
             self.file = open(self.filepath, 'r+')
             self.has_changed = False
@@ -52,11 +52,14 @@ class Properties(dict):
         self.has_changed = True
         return dict.pop(self, k, d=d)
 
-    def update(self, E=None, **F):
+    def update(self, *args, **kwargs):
         self.has_changed = True
-        return dict.update(self, E=E, **F)
+        return dict.update(self, *args, **kwargs)
 
-class BaseStorage:
+class BaseStorage(object):
+    """
+     NOTE: Storage keys are case INSENSITIVE.  So TESTING is the same as testing.
+    """
     reserved_names = ('reload', 'check', 'set', 'get', 'save', 'properties', 'reserved_names')
     
     def setup(self, appname, properties = SortedDict(), directories = SortedDict(), *args, **kwds):
@@ -90,6 +93,7 @@ class BaseStorage:
 
     def reload(self, name=None):
         if name:
+            name = slugify(name)
             self.properties[name].reload()
         else:
             for p in self.properties.values():
@@ -100,6 +104,7 @@ class BaseStorage:
             os.makedirs(d)
 
     def set(self, name, value):
+        name = slugify(name)
         rvalues = self.properties.values()
         rvalues.reverse()
         for p in rvalues:
@@ -110,6 +115,7 @@ class BaseStorage:
         rvalues[0][name] = value
 
     def get(self, name, default=None):
+        name = slugify(name)
         for p in self.properties.values():
             if p.has_key(name):
                 return p[name]
@@ -121,8 +127,28 @@ class BaseStorage:
     def __setitem__(self, key, value):
         self.set(key, value)
 
+    def __getattribute__(self, name):
+        try:
+            return super(BaseStorage, self).__getattribute__(name)
+        except AttributeError, e:
+            val = self.get(name)
+            if val:
+                return val
+            else:
+                raise
+
+    def keys(self):
+        keys = []
+        for p in self.properties.values():
+            keys += p.keys()
+        return keys
+
+    def has_key(self, key):
+        key = slugify(key)
+        return key in self.keys()
+
     def save(self):
-        for p in self.properties:
+        for p in self.properties.values():
             p.save()
 
 class Storage(Singleton, BaseStorage):
