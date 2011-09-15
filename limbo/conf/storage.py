@@ -62,10 +62,13 @@ class BaseStorage(object):
     """
     reserved_names = ('reload', 'check', 'set', 'get', 'save', 'properties', 'reserved_names')
     
-    def setup(self, appname, properties = SortedDict(), directories = SortedDict(), *args, **kwds):
-        home_dir = os.environ.get('USERPROFILE') or os.environ.get('HOME')
+    def setup(self, appname=None, properties = SortedDict(), directories = SortedDict(), *args, **kwds):
+        default_home = os.environ.get('USERPROFILE') or os.environ.get('HOME')
+        home_dir = kwds.pop('home', None) or default_home
+        if home_dir.startswith('~'):
+            home_dir = os.path.join(default_home, home_dir[2:])
         self.home = home_dir
-        base_path = os.path.join(home_dir, '.%s' %(slugify(appname)))
+        base_path = appname and os.path.join(home_dir, '.%s' %(slugify(appname))) or home_dir
         self.base = base_path
         self.check(self.base)
 
@@ -103,16 +106,21 @@ class BaseStorage(object):
         if not os.path.exists(d):
             os.makedirs(d)
 
-    def set(self, name, value):
-        name = slugify(name)
+    @property
+    def rvalues(self):
         rvalues = self.properties.values()
         rvalues.reverse()
-        for p in rvalues:
+        return rvalues
+
+    def set(self, name, value):
+        name = slugify(name)
+        values = self.rvalues
+        for p in values:
             if p.has_key(name):
                 p[name] = value
                 p.save()
                 return
-        rvalues[0][name] = value
+        values[0][name] = value
 
     def get(self, name, default=None):
         name = slugify(name)
@@ -126,6 +134,20 @@ class BaseStorage(object):
 
     def __setitem__(self, key, value):
         self.set(key, value)
+
+    def __delitem__(self, key):
+        key = slugify(key)
+        for p in self.rvalues:
+            if p.has_key(key):
+                del p[key]
+                return
+
+    def __delattr__(self, name):
+        if name in self.reserved_names:
+            raise ValueError('You cannot delete a reserved attribute.')
+        if self.has_key(name):
+            return self.__delitem__(name)
+        return super(BaseStorage, self).__delattr__(name)
 
     def __getattribute__(self, name):
         try:
