@@ -36,6 +36,7 @@ class ConfigSettings:
 
 
     def add_cfg(self, path):
+        path = os.path.abspath(path)
         if not os.path.exists(path):
             raise ImproperlyConfigured('Config file does not exist: %s' % path)
         if path and os.path.exists(path):
