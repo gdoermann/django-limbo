@@ -78,8 +78,9 @@ class BaseStorage(object):
             name = slugify(name).upper()
             if isinstance(path, basestring):
                 path = [path]
-            setattr(self, name, os.path.join(base_path, *path))
-            self.check(getattr(self, name))
+            dirname = os.path.join(base_path, *path)
+            setattr(self, name, dirname)
+            self.check(dirname)
 
         self.properties = SortedDict()
         for name, path in properties.items():
