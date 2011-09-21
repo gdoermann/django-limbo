@@ -75,7 +75,7 @@ class BaseStorage(object):
         for name, path in directories.items():
             if name in self.reserved_names:
                 raise ValueError('%s is a reserved name: %s' %(name))
-            name = slugify(name)
+            name = slugify(name).upper()
             if isinstance(path, basestring):
                 path = [path]
             setattr(self, name, os.path.join(base_path, *path))

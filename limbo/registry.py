@@ -48,3 +48,17 @@ class Registry(Singleton):
     pass
 
 generic = Registry()
+
+class EventRegistry(object):
+    def __init__(self, *methods):
+        self.methods = [method for method in methods if method]
+
+    def register(self, method):
+        self.methods.append(method)
+
+    def notify(self, *args, **kwargs):
+        for method in self.methods:
+            method(*args, **kwargs)
+
+    def __call__(self, *args, **kwargs):
+        self.notify(*args, **kwargs)
