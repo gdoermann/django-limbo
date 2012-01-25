@@ -1,0 +1,7 @@
+{% spaceless %}
+<div class='{{field.name}}'>
+<span name="{{field.auto_id}}" class='field_help ui-helper-hidden'>{{field.help_text}}</span>
+<span name="{{field.auto_id}}" class='field_errors'>{% for err in field.errors %}{{err}}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+<label for="{{field.auto_id}}" {% if field.field.required %}class='required'{% endif %}>{{ field.label }}:</label>{{field}} 
+</div>
+{% endspaceless %}

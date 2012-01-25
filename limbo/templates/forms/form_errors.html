@@ -1,0 +1,13 @@
+{% spaceless %}
+{% for name, errors in form.errors.items %}
+	{% if name == '__all__' %}
+		<div>
+			<ul class='form_errors'>
+				{% for err in errors%}
+					<li>{{err}}</li>
+				{% endfor %}
+			</ul>
+		</div>
+	{% endif %}
+{% endfor %}
+{% endspaceless %}

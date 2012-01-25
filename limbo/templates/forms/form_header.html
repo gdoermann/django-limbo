@@ -1,0 +1,6 @@
+{% spaceless %}
+{% include 'form_errors.html' %}
+{% for field in form.hidden_fields %}
+	{{field}}
+{% endfor %}
+{% endspaceless %}

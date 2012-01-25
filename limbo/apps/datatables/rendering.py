@@ -4,6 +4,7 @@ from django.utils.datastructures import SortedDict
 from django.template import defaultfilters
 from django.utils.encoding import smart_unicode
 from django.utils.safestring import mark_safe
+from limbo import forms
 from limbo.apps.datatables.util import get_attr, test_rights
 import logging
 
@@ -12,7 +13,8 @@ log = logging.getLogger(__file__)
 __all__ = [
     'ICON', 'CENTERED_ICON', 'CellRenderer', 'LinkRenderer',
     'AbsoluteURLRenderer', 'BooleanRenderer', 'row_render_dict',
-]
+    'ManyToManyManagerRenderer',
+    ]
 
 ICON = '<span class="ui-icon %s"></span>'
 CENTERED_ICON = '<div class="center">%s</div>' %ICON
@@ -29,6 +31,16 @@ class CellRenderer:
             if v is None:
                 v = '-'
             return v
+
+    def editable(self, request, obj, path, form):
+        if not form:
+            return False
+        v = self.value(request, obj, path, form)
+        try:
+            return issubclass(v.__class__, (forms.Widget, forms.BoundField))
+        except:
+            log.error(traceback.format_exc())
+            return False
 
     def render(self, request, obj, path = None, form = None):
         value = self.value(request, obj, path, form)
@@ -52,6 +64,7 @@ class LinkRenderer(CellRenderer):
         self.link_path = link_path
         self.permission = permission
         self.request_test = request_test
+        CellRenderer.__init__(self)
 
     def render(self, request, obj, path = None, form = None):
         s = CellRenderer.render(self, request, obj, path)
@@ -77,6 +90,8 @@ def row_render_dict(renderer = AbsoluteURLRenderer()):
 
 class BooleanRenderer(CellRenderer):
     def render(self, request, obj, path = None, form = None):
+        if self.editable(request, obj, path, form):
+            return CellRenderer.render(self, request, obj, path, form)
         value = self.value(request, obj, path, form)
         return self.render_bool(value, True)
 
@@ -92,3 +107,16 @@ class BooleanRenderer(CellRenderer):
             return mark_safe(s % 'ui-icon-check')
         else:
             return mark_safe(s% 'ui-icon-closethick')
+
+class ManyToManyManagerRenderer(CellRenderer):
+
+    def render(self, request, obj, path = None, form = None):
+        value = self.value(request, obj, path, form)
+        try:
+            s = ', '.join([str(item) for item in value.all()[:5]])
+            if value.all().count() > 5:
+                s += ' ...'
+            return s
+        except Exception:
+            log.error(traceback.format_exc())
+            return str(value)

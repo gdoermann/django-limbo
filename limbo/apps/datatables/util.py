@@ -40,9 +40,12 @@ def get_attr(request, obj, path, form = None):
 
 def test_rights(request, test = None, perm = None):
     """ This cannot be simplified into a one liner... """
-    has_perm = True
-    if test:
-        has_perm = has_perm and test(request)
-    if perm:
-        has_perm = has_perm and request.user.has_perm(perm)
-    return has_perm
+    try:
+        has_perm = True
+        if test:
+            has_perm = has_perm and test(request)
+        if perm:
+            has_perm = has_perm and request.user.has_perm(perm)
+        return has_perm
+    except ObjectDoesNotExist: # Like they don't have a profile
+        return False

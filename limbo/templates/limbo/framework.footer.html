@@ -1,10 +1,12 @@
 {#Example Framework Footer#}
 {% load static %}
 {%  include 'limbo/framework.html' %}
-{%  if SETTINGS.DEBUG %}
+{%  if SETTINGS.DEBUG  or SETTINGS.NON_COMPILED_JS or request.user.is_superuser %}
     {%  for js in SETTINGS.JAVASCRIPTS %}
         <script type="text/javascript" charset="utf-8" src="{% get_static_prefix %}js/{{ js }}" ></script>
     {%  endfor %}
+    <script type="text/javascript" charset="utf-8" src="{% get_static_prefix %}js/sugar.js" ></script>
+    <script type="text/javascript" charset="utf-8" src="{% get_static_prefix %}js/limbo.datatables.js" ></script>
     <script type="text/javascript" charset="utf-8" src="{% get_static_prefix %}js/ui.limbo.js" ></script>
     <script type="text/javascript" charset="utf-8" src="{% get_static_prefix %}js/limbo.js" ></script>
 {%  else %}
