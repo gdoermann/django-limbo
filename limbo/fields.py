@@ -1,14 +1,17 @@
 from copy import copy
 from django.conf import settings
 from django.forms import fields, models, ValidationError
-from django.forms.fields import DEFAULT_DATE_INPUT_FORMATS
 from django.forms.util import ValidationError
 from django.template.defaultfilters import slugify
+from django.utils.formats import get_format
 from django.utils.translation import ugettext_lazy as _
 from limbo import widgets
 from limbo.timeblock.logic import TimeBlock
 from limbo.validation import valid_sms, clean_sms
 import datetime
+
+DEFAULT_DATE_INPUT_FORMATS = get_format('DATE_INPUT_FORMATS')
+DEFAULT_TIME_INPUT_FORMATS = get_format('TIME_INPUT_FORMATS')
 
 class MoneyField(fields.DecimalField):
 
