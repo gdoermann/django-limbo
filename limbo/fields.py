@@ -105,7 +105,7 @@ DEFAULT_TIME_INPUT_FORMATS = getattr(settings, 'DEFAULT_TIME_INPUT_FORMATS',
       [
           '%H:%M %p',
           '%H:%M:%S %p'
-      ] + list(fields.DEFAULT_TIME_INPUT_FORMATS)
+      ] + list(get_format('DEFAULT_TIME_INPUT_FORMATS'))
       )
 
 class AutoTimeField(fields.TimeField):
