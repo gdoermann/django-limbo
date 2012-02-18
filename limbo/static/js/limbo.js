@@ -1265,6 +1265,9 @@ LIMBO.process = function(obj){
     obj.find('.date input').datepicker();
     obj.find('.datepicker').datepicker();
     obj.find('.timepicker').timepicker();
+    if ($.fn.dialogbox != undefined){
+        obj.find('.dialog-box').dialogbox();
+    }
     obj.find('.autoresize').autoResize().addClass('ui-widget').addClass('ui-widget-content');
     obj.find('.autocomplete select').combobox();
     obj.find('select.combobox').combobox();

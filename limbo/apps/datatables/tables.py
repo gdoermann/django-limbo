@@ -312,6 +312,9 @@ class ModelDataTableBase(DataTablesBase):
         self.source = source_url or request.path
         DataTablesBase.__init__(self, request)
         self.title = title or self.title
+        if getattr(self, 'Meta', None) and getattr(self.Meta, 'exclude', None):
+            for name in self.Meta.exclude:
+                del self.columns[name]
 
     def save(self, queryset, *args, **kwargs):
         return DataTablesBase.save(self, queryset,
