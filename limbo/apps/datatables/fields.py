@@ -63,6 +63,8 @@ class TableColumn(TableField):
         attrs = {
             'title':self.label,
             }
+        if not self.searchable:
+            attrs['class'] = 'ui-helper-hidden'
         return attrs
 
     def render(self, *args, **kwargs):

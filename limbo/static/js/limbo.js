@@ -1629,16 +1629,18 @@ $(function(){
     LIMBO.server_tables = new Object();
     LIMBO.help_dialog = new HelpDialog();
     LIMBO.paginators = new Paginators();
-    $('#user_info').fgmenu({
-        content: $('#user_menu').html(),
-        positionOpts: {
-            posX: 'left',
-            posY: 'bottom',
-            offsetY:2,
-            directionH:'left'},
-        showSpeed: 300,
-        linkToFront: true
-    });
+    if ( $.fn.fgmenu != undefined && $('#user_info').length > 0){
+        $('#user_info').fgmenu({
+            content: $('#user_menu').html(),
+            positionOpts: {
+                posX: 'left',
+                posY: 'bottom',
+                offsetY:2,
+                directionH:'left'},
+            showSpeed: 300,
+            linkToFront: true
+        });
+    }
     LIMBO.messages = new Messages();
     LIMBO.forms = new Forms();
     LIMBO.buttons = new Buttons();
