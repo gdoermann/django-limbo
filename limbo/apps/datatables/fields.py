@@ -1,3 +1,4 @@
+from django.db.models.query import QuerySet
 from django.template.defaultfilters import slugify
 from limbo.meta import DeclaredField
 from limbo.apps.datatables.rendering import *
@@ -11,10 +12,13 @@ import logging
 
 logger = logging.getLogger(__file__)
 
+logger = logging.getLogger(__file__)
+
 class TableField(DeclaredField):
     """ This is a declared field table columns"""
 
 class TableColumn(TableField):
+    DEFAULT_RENDERER = CellRenderer()
     def __init__(self, attr,
                  label=None,
                  visible=True,
@@ -22,7 +26,7 @@ class TableColumn(TableField):
                  searchable=False,
                  choices=None,
                  field=None,
-                 renderer=CellRenderer(),
+                 renderer=None,
                  is_related=False,
                  request_test=None,
                  permission=None):
@@ -33,7 +37,7 @@ class TableColumn(TableField):
         self.searchable=searchable
         self.choices=choices
         self.set_field(field)
-        self.renderer=renderer
+        self.renderer=renderer or self.DEFAULT_RENDERER
         self.is_related=is_related
         self.request_test=request_test
         self.permission=permission
@@ -58,7 +62,9 @@ class TableColumn(TableField):
     def attrs(self):
         attrs = {
             'title':self.label,
-        }
+            }
+        if not self.searchable:
+            attrs['class'] = 'ui-helper-hidden'
         return attrs
 
     def render(self, *args, **kwargs):
@@ -72,14 +78,14 @@ class TableColumn(TableField):
             "bSearchable":  self.searchable,
             "bVisible":     self.visible,
             "bSortable":    self.sortable,
-        })
+            })
 
     def classes(self):
         cls_lst = [slugify(self.label),
-           self.visible and "bVisible" or "nVisible",
-           self.searchable and "bSearchable" or "nSearchable",
-           self.sortable and "bSortable" or "nSortable",
-       ]
+                   self.visible and "bVisible" or "nVisible",
+                   self.searchable and "bSearchable" or "nSearchable",
+                   self.sortable and "bSortable" or "nSortable",
+                   ]
         return ' '.join(cls_lst)
 
     def clean(self, value):
@@ -112,6 +118,8 @@ class TableColumn(TableField):
                 return self._field.widget.choices
             return None
         else:
+            if dict(self.choices).has_key('None'):
+                return self.choices
             return [("None", 'All')] + list(self.choices)
 
     def set_field(self, field):
@@ -160,7 +168,6 @@ class TableColumn(TableField):
     def filter_queryset(self, queryset, value):
         # This is so you can do custom alterations to a queryset
         args = self.filter_args(value)
-        logger.info(args)
         if not args:
             return queryset
         else:
@@ -174,14 +181,14 @@ class SearchableTableColumn(TableColumn):
                  searchable=True,
                  choices=None,
                  field=None,
-                 renderer=CellRenderer(),
+                 renderer=None,
                  is_related=False,
                  request_test=None,
                  permission=None):
         super(SearchableTableColumn, self).__init__(attr, label=label, visible=visible, sortable=sortable,
-                                               searchable=searchable, choices=choices, field=field,
-                                               renderer=renderer, is_related=is_related, request_test=request_test,
-                                               permission=permission)
+            searchable=searchable, choices=choices, field=field,
+            renderer=renderer, is_related=is_related, request_test=request_test,
+            permission=permission)
 
 class CaseSensitiveTableColumn(SearchableTableColumn):
     def filter_args(self, value):
@@ -197,39 +204,33 @@ class ExactTableColumn(SearchableTableColumn):
             return {}
         return {self.attr+"__iexact": cvalue}
 
-class BooleanColumn(TableColumn):
-    def __init__(self, attr, sortable=True,
-                 searchable=True,
-                 *args, **kwargs):
-        kwargs['choices'] = kwargs.get('choices',(
-                               ('1', "Yes"),
-                               ('0', "No")
-                               ))
-        kwargs['field'] = kwargs.get('field', forms.NullBooleanField())
-        kwargs['renderer'] = kwargs.get('renderer', BooleanRenderer())
-        kwargs['sortable'] = sortable
-        kwargs['searchable'] = searchable
-        super(BooleanColumn, self).__init__(attr, *args, **kwargs)
-
-
-    def filter_args(self, value):
-        cvalue = self.cleaned_value(value)
-        try:
-            cvalue = int(cvalue)
-        except:
-            pass
-
-        if cvalue in [None, '']:
-            return {}
+class BooleanSearchField(forms.NullBooleanField):
+    def to_python(self, value):
+        if value in ('2'):
+            return True
+        elif value in ('3'):
+            return False
         else:
-            return {self.attr: bool(cvalue)}
+            return super(BooleanSearchField, self).to_python(value)
 
+class BooleanColumn(TableColumn):
+    DEFAULT_CHOICES = (
+        ('None', 'All'),
+        ('2', "Yes"),
+        ('3', "No")
+        )
+    def __init__(self, *args, **kwargs):
+        kwargs['choices'] = kwargs.get('choices', self.DEFAULT_CHOICES)
+        kwargs['field'] = kwargs.get('field', BooleanSearchField())
+        kwargs['renderer'] = kwargs.get('renderer', BooleanRenderer())
+        super(BooleanColumn, self).__init__(*args, **kwargs)
 
 class ModelTableColumn(TableColumn):
     def __init__(self, attr,
-                 queryset,
+                 queryset=None,
                  sortable=True,
                  searchable=True,
+                 filter_attribute=None,
                  *args, **kwargs):
         """
         @param queryset: A queryset of choices
@@ -237,12 +238,16 @@ class ModelTableColumn(TableColumn):
         kwargs['sortable'] = sortable
         kwargs['searchable'] = searchable
         super(ModelTableColumn, self).__init__(attr, *args, **kwargs)
+        self.filter_attribute = filter_attribute or self.attr
         self._queryset = queryset
         self._parse_choices()
 
     @property
     def queryset(self):
-        return self._queryset
+        if not isinstance(self._queryset, QuerySet) and callable(self._queryset):
+            return self._queryset(self)
+        else:
+            return self._queryset
 
     @queryset.setter
     def queryset(self, q):
@@ -262,7 +267,39 @@ class ModelTableColumn(TableColumn):
         if not cvalue:
             return {}
         else:
-            return {self.attr + '__pk': cvalue}
+            return {self.filter_attribute + '__pk': cvalue}
 
     def Q(self, value):
         return None
+
+class BooleanModelField(BooleanColumn):
+    """ Checks to see if a field has been set.  Renders as a boolean.
+    Uses <attr>__isnull in filters.
+    """
+    def __init__(self, attr,
+                 sortable=True,
+                 searchable=True,
+                 filter_attribute = None,
+                 *args, **kwargs):
+        kwargs['sortable'] = sortable
+        kwargs['searchable'] = searchable
+        super(BooleanModelField, self).__init__(attr, *args, **kwargs)
+        self.filter_attribute = filter_attribute or self.attr
+
+    def sort(self, direction='asc'):
+        if not self.sortable:
+            return None
+        name = self.filter_attribute
+        if direction == 'desc':
+            name = '-'+name
+        return name
+
+    def filter_args(self, value):
+        cvalue = self.cleaned_value(value)
+        if cvalue is None:
+            return {}
+        else:
+            return {self.filter_attribute + '__isnull': not bool(cvalue)}
+
+class ManyToManyManagerField(ModelTableColumn):
+    DEFAULT_RENDERER = ManyToManyManagerRenderer()

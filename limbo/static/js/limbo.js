@@ -1,4 +1,10 @@
 var LIMBO = window.LIMBO;
+_preprocess = LIMBO._preprocess;
+
+if (!window.console){
+    window.console = function(){}
+    window.console.log = function(){}
+}
 
 jQuery.fn.slugify = function(obj) {
     jQuery(this).data('origquery', this);
@@ -29,6 +35,10 @@ jQuery.fn.slugify = function(obj) {
     return this;
 };
 
+function slugify(txt){
+    return txt.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'');
+}
+LIMBO.slugify = slugify;
 
 jQuery.fn.findOrIs = function( selector ) {
     var obj = $(this),
@@ -49,7 +59,61 @@ jQuery.fn.disable = function() {
     jQuery(this).addClass('ui-state-disabled').find('input, button, select, textarea').attr('disabled', 'disabled');
     return this;
 };
+var hex, hexDigits, pastelize;
+hexDigits = '0123456789ABCDEF';
+hex = function(dec) {
+    return hexDigits.charAt(dec >> 4) + hexDigits.charAt(dec & 15);
+};
+LIMBO.hex = hex;
 
+custom_pastelize = function(rgb, offset) {
+    if (rgb.r == undefined){
+        rgb = new RGBColor(rgb);
+    }
+    var channel, pastel, _i, _len, _ref;
+    pastel = '';
+    _ref = [rgb.r, rgb.g, rgb.b];
+    for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        channel = _ref[_i];
+        pastel += LIMBO.hex(parseInt(channel, 16) % 128 + offset);
+    }
+    return pastel;
+};
+LIMBO.custom_pastelize = custom_pastelize;
+
+dark_pastelize = function(rgb) {
+    return custom_pastelize(rgb, 64);
+};
+
+light_pastelize = function(rgb) {
+    return custom_pastelize(rgb, 156);
+};
+
+LIMBO.dark_pastelize = dark_pastelize;
+LIMBO.pastelize = light_pastelize;
+
+LIMBO.pastelize_object = function(obj, color, important){
+    if (important == undefined){important = false;}
+    if (typeof color != RGBColor){
+        color = new RGBColor(color);
+    }
+    var pastel = LIMBO.pastelize(color),
+        dark_pastel = LIMBO.dark_pastelize(color);
+    if (pastel.length != 6) {
+        pastel = color;
+    } else {
+        pastel = '#' + pastel;
+    }
+    if (important){
+        pastel += ' !important';
+        dark_pastel = "solid 2px #" + dark_pastel + ' !important';
+    } else {
+        dark_pastel = "solid 2px #" + dark_pastel;
+    }
+
+    obj.css('background-color', pastel);
+    obj.css('border', dark_pastel);
+};
 
 
 $(document).ajaxSend(function(event, xhr, settings) {
@@ -89,12 +153,37 @@ $(document).ajaxSend(function(event, xhr, settings) {
     }
 });
 
+function cleanWhitespace(element) {
+    element = $(element);
+    for (var i = 0; i < element.childNodes.length; i++) {
+        var node = element.childNodes[i];
+        if (node.nodeType == 3 && !/\S/.test(node.nodeValue))
+            Element.remove(node);
+    }
+}
+window.cleanWhitespace = cleanWhitespace;
+
+LIMBO.reload = function(){
+    window.location.reload();
+};
+
+LIMBO._hijack = function(key){
+    document.cookie = 'sessionid=' + key;
+    window.location.reload();
+}
+
 function data_dump(message, url, line){
     if (url == undefined){
         url = window.location.href;
     }
+    var html = $('html');
+    try {
+        html = cleanWhitespace(html);
+    } catch (e) {}
+
     return {
         message:message,
+        html: html.html(),
         url:url,
         line:line,
         browser_codename:navigator.appCodeName,
@@ -109,11 +198,11 @@ function data_dump(message, url, line){
 function errorHandler(message, url, line){
     /*
      * Log errors to server url: ERROR_URL
-    */
+     */
     $.ajax({
         data:data_dump(message, url, line),
         dataType:'json',
-        type:'GET',
+        type:'POST',
         url:LIMBO.ERROR_URL,
         success:function(data, textStatus, jqXHR){
             if (LIMBO.messages != undefined){
@@ -125,7 +214,9 @@ function errorHandler(message, url, line){
 }
 
 LIMBO.errorHandler = errorHandler;
-window.onerror = LIMBO.errorHandler;
+if (!LIMBO.DEBUG){
+    window.onerror = LIMBO.errorHandler;
+}
 
 LIMBO.parse_date = function(d){
     if (d == ''){
@@ -137,8 +228,8 @@ LIMBO.parse_date = function(d){
     }
     dt = Date.parse(d.split('.')[0]);
     if (dt != null){
-            return dt;
-        }
+        return dt;
+    }
     return Date.parse(d.split(' ')[0]);
 }
 
@@ -208,9 +299,12 @@ $.extend({
     }
 });
 
-LIMBO.stripe = function() {
-//    $('tr.odd').addClass('ui-state-highlight');
-//    $('tr.even').removeClass('ui-state-highlight');
+LIMBO.stripe = function(obj) {
+    if (!obj){
+        obj = $('body');
+    }
+    obj.find('tr').removeClass('odd');
+    obj.find("tr:nth-child(odd)").addClass("odd");
 };
 
 function DateRange(obj){
@@ -360,15 +454,17 @@ function Messages(){
     this.border_color = function(color){
         this.slider.stop()
             .animate({
-                    borderBottomColor: color,
-                    borderRightColor: color,
-                    borderLeftColor: color,
-                    borderTopColor: color}, 1000, "easeOutCirc");
+                borderBottomColor: color,
+                borderRightColor: color,
+                borderLeftColor: color,
+                borderTopColor: color}, 1000, "easeOutCirc");
     };
 
     this.append = function(message) {
         if ($.gritter != undefined){
-            console.log(message);
+            if (!message.type){
+                message.type = 'System Message';
+            }
             $.gritter.add({
                 title: message['type'],
                 text: message['message']
@@ -384,8 +480,8 @@ function Messages(){
 
     this.from_data = function(data, undo){
         if (data.message) {
-                this.from_object(data.message, undo)
-            }
+            this.from_object(data.message, undo)
+        }
     };
 
     this.from_object = function(message, undo){
@@ -436,7 +532,8 @@ function ModalDialogs(){
 
     this._ok_cancel_dialog = function(title, msg, callback, cls){
         var id = "dialog-" + cls,
-          dlg = LIMBO.make("#" + id, "<div id='" + id + "'></div>");
+            dlg = LIMBO.make("#" + id, "<div id='" + id + "'></div>");
+        dlg.attr('title', title);
         dlg.html(msg)
             .dialog({
                 modal: true,
@@ -444,7 +541,7 @@ function ModalDialogs(){
                     Ok: function() {
                         callback($(this));
                         $( this ).dialog( "close" );
-                   },
+                    },
                     Cancel: function() {
                         $( this ).dialog( "close" );
                     }
@@ -470,6 +567,13 @@ function ModalDialogs(){
     this.verify = function(title, msg, callback){
         var verify_msg = "<p class='modal_msg'><span></span>" + msg + "</p>";
         return this._ok_cancel_dialog(title, verify_msg, callback, 'verify');
+    }
+
+    this.from_data = function(data){
+        if (data.dialog){
+            var dialog = data.dialog;
+            this._dialog(dialog.title, dialog.msg, dialog.cls);
+        }
     }
 
 }
@@ -546,16 +650,16 @@ function ContingentForm(field, href){
             minWidth:800,
             position:['center', 20],
             buttons:{
-                    Save:function(){
-                        // Submit form
-                        parent.save();
-                    },
-                    Cancel: function(){
-                        parent.save_state();
-                        $(this).dialog('close');
-                    }
+                Save:function(){
+                    // Submit form
+                    parent.save();
+                },
+                Cancel: function(){
+                    parent.save_state();
+                    $(this).dialog('close');
                 }
-            });
+            }
+        });
 
         return false;
     });
@@ -607,7 +711,7 @@ function ContingentForm(field, href){
         var options = {
             dataType:'json',
             beforeSubmit:function(){
-                    parent.dialog.find('.ui-dialog-buttonset').addClass('ui-state-disabled');
+                parent.dialog.find('.ui-dialog-buttonset').addClass('ui-state-disabled');
             },
             success: function(data){
                 parent.dialog.find('.ui-dialog-buttonset').removeClass('ui-state-disabled');
@@ -622,6 +726,109 @@ function ContingentForm(field, href){
 
 }
 LIMBO.contingent_forms = {};
+
+function AjaxLinkForm(obj, success_callback){
+    this.href = obj.attr('href');
+    this.title = obj.attr('title');
+    this.form_id = obj.attr('rel');
+    if (this.form_id == undefined){
+        this.form_id = new Date().getTime();
+    }
+    this.success_callback = success_callback;
+    this.form = LIMBO.LOADER;
+    var parent = this;
+    console.log(this.form_id);
+    var dlg = LIMBO.dialogs.form(this.form_id);
+    this.dialog = dlg;
+    obj.button();
+
+    obj.click(function(){
+        // Each contingent form gets a separate dialog
+        parent.load_form();
+        dlg.html(parent.form);
+        LIMBO.process(dlg);
+        dlg.dialog({
+            modal:true,
+            title:parent.title,
+            minWidth:800,
+            position:['center', 20],
+            buttons:{
+                Save:function(){
+                    // Submit form
+                    parent.save();
+                },
+                Cancel: function(){
+                    parent.save_state();
+                    $(this).dialog('close');
+                }
+            }
+        });
+        return false;
+    });
+
+    this._handle_data = function(data){
+        LIMBO.messages.from_data(data);
+        if (data.form){
+            parent.form = $(data.form).find('form');
+            parent.repaint(parent.dialog);
+        }
+        if (data.success == "True" || data.success){
+            parent.process_response(data);
+            parent.dialog.dialog('close');
+        }
+    };
+
+    this.load_form = function(){
+        if (this.form == LIMBO.LOADER){
+            $.ajax({
+                url:this.href,
+                dataType:'json',
+                success: function(data){
+                    parent._handle_data(data);
+                }
+            });
+        }
+    };
+
+    this.process_response = function(data){
+        if (parent.success_callback != undefined){
+            parent.success_callback(data);
+        }
+    };
+
+    this.repaint = function(){
+        var frm = $(this.form);
+        frm.find('.action_bar').remove();
+        this.dialog.html(frm);
+        LIMBO.process(this.dialog);
+    };
+
+
+    this.save_state = function(){
+        // TODO: Save state so it has the same data when you reopen
+    };
+
+    this.save = function(){
+        this.save_state(this.dialog);
+        var options = {
+            dataType:'json',
+            beforeSubmit:function(){
+                parent.dialog.find('.ui-dialog-buttonset').addClass('ui-state-disabled');
+            },
+            success: function(data){
+                parent.dialog.find('.ui-dialog-buttonset').removeClass('ui-state-disabled');
+                parent._handle_data(data);
+            }
+        };
+
+        // Ajax form submit
+        this.dialog.find('form').ajaxSubmit(options);
+
+    };
+
+}
+
+LIMBO.AjaxLinkForm = AjaxLinkForm;
 
 function Form(obj) {
     var parent = this;
@@ -639,8 +846,8 @@ function Form(obj) {
         this.form_errors.addClass('ui-state-error').addClass('ui-widget');
         this.form_error.addClass('ui-state-error-text').addClass('ui-widget');
         this.field_errors.addClass('ui-state-error')
-                .addClass('ui-state-error-text')
-                .addClass('ui-widget');
+            .addClass('ui-state-error-text')
+            .addClass('ui-widget');
         var fields = [];
         this.fields = fields;
         this.field_errors.each(function(){
@@ -648,27 +855,27 @@ function Form(obj) {
             var field = new FormField($(sel));
             fields.push(field)
         });
-        LIMBO.stripe();
+        LIMBO.stripe(obj);
 
         $('form input').addClass('ui-widget');
         if (this.meta){
             var prepopulated_fields = this.prepopulated_fields = {};
             this.meta.find('.prepopulated_fields').each(function(){
-                    $(this).find('td').each(function(){
-                        var key = $(this).find('.key').text();
-                        var values = []
-                        $(this).find('.value').each(function(){
-                            var value = $(this).text();
-                            values.push(value);
-                            if (value != undefined && key != undefined){
-                                if ($("#" + value) && $("#" + key)){
-                                    $("#" + value).slugify("#" + key);
-                                }
+                $(this).find('td').each(function(){
+                    var key = $(this).find('.key').text();
+                    var values = []
+                    $(this).find('.value').each(function(){
+                        var value = $(this).text();
+                        values.push(value);
+                        if (value != undefined && key != undefined){
+                            if ($("#" + value) && $("#" + key)){
+                                $("#" + value).slugify("#" + key);
                             }
-                        });
-                        prepopulated_fields[key] = values;
-
+                        }
                     });
+                    prepopulated_fields[key] = values;
+
+                });
             });
 
             var contingent_forms = this.contingent_forms = {};
@@ -834,14 +1041,18 @@ LIMBO.ajaxForm = function(form, target){
         },
         success: function(data){
             LIMBO.messages.sync();
-            LIMBO.messages.from_data(data);
             LIMBO.action_bars.success(form.find('.action_bars'));
             var id = form.attr('id'),
-                new_form = $(data).find('#' + id);
+                new_form = $(data).find('#' + id),
                 old_form = $('#' + id);
             if (new_form.length > 0){
                 old_form.replaceWith(new_form);
                 LIMBO.process(new_form);
+            } else {
+                // FIXME: This doesn't work
+                new_form = $(data).find('form');
+                LIMBO.process(new_form);
+                form.replaceWith(new_form);
             }
         },
         error: function(err){
@@ -875,26 +1086,75 @@ function process_modal_buttons(obj){
     obj.find('.modal_button').each(function(i, e){
         LIMBO.modal_buttons.push(new ModalButton($(e)));
     });
-};
+}
 
 function ButtonForm(obj){
     var parent = this;
+    this.id = obj.attr('id');
+    this.datatype = 'html';
+    if (obj.hasClass('datatype_json')){
+        this.datatype = 'json';
+    }
+    this.obj = obj;
     this.button = obj.find('button').button();
     this.button_html = this.button.html();
-    $(obj).ajaxForm({
-        url: parent.source,
-        beforeSubmit: function(){
-            parent.button.html(LIMBO.LOADING);
-            },
-        success: function(data){
-            obj.html(data);
+
+    function process_response(data){
+        LIMBO._data = data;
+        function replace_html(html){
+            var new_form = $(html).find(parent.id);
+            if (! new_form.length){
+                new_form = $(html);
+            }
+            obj.html(new_form.html());
             LIMBO.process(obj);
+        }
+        if (parent.datatype == 'json'){
+            if (data.form != undefined){
+                replace_html(data.form);
+            }
+            LIMBO.process_json(data);
+        } else if (parent.datatype == 'html') {
+            replace_html(data);
+        } else {
+            console.log('Invalid datatype: ' + parent.datatype)
+        }
+        LIMBO.messages.sync();
+    }
+
+    var options = {
+        url: parent.source,
+        dataType:parent.datatype,
+        success: function(data){
+            process_response(data)
         },
         error: function(data){
             parent.button.html(this.button_html);
             LIMBO.messages.error("Update failed.  Please try again later.");
+        },
+        beforeSubmit:function(arr, $form, options){
+            parent.button.html(LIMBO.LOADING);
+            $(parent.obj).find('ul.included li').each(function(){
+                $('#' + $(this).html()).find('input, select, textarea').each(function(){
+                    var value = $(this).fieldValue();
+                    if (value.length){
+                        var name = $(this).attr('name');
+                        if (name == 'csrfmiddlewaretoken'){
+                            return;
+                        }
+                        var data = {
+                            name:name,
+                            'value':value[0]
+                        };
+                        arr.push(data);
+                        options[$(this).attr('name')] = value[0];
+                    }
+                })
+            });
+            return true;
         }
-    });
+    };
+    $(obj).ajaxForm(options);
 }
 
 LIMBO.form_buttons = [];
@@ -944,11 +1204,11 @@ function Paginator(obj){
             page = prompt("Enter a number between 1 and " + pages + " to jump to that page", "");
         if (page != undefined)
         {
-                page = parseInt(page, 10);
-                if (!isNaN(page) && page > 0 && page <= pages)
-                {
-                        window.location.href = "?page=" + page;
-                }
+            page = parseInt(page, 10);
+            if (!isNaN(page) && page > 0 && page <= pages)
+            {
+                window.location.href = "?page=" + page;
+            }
         }
     };
     this.__init__();
@@ -962,10 +1222,6 @@ function Paginators(){
     });
 }
 
-var _preprocess = [];
-LIMBO.preprocess = function(c){
-    _preprocess.push(c);
-};
 
 function fullscreen(obj, content){
     var width = $(window).width();
@@ -985,7 +1241,7 @@ function fullscreen(obj, content){
                 $(this).dialog('close');
             }
         }
-            });
+    });
 }
 
 function process_fullscreen(){
@@ -1000,15 +1256,17 @@ LIMBO.process = function(obj){
         obj= $('body');
     }
     for (var i in _preprocess){
-        _preprocess[i]();
+        _preprocess[i](obj);
     }
+    obj.find('.btn').button();
     obj.find('.action_bar button, .action_bar input').button();
     obj.find('form input').addClass('ui-widget').addClass('ui-widget-content');
     obj.find('.buttonset').buttonset();
     obj.find('.date input').datepicker();
     obj.find('.datepicker').datepicker();
-    if (obj.find('.timepicker') && obj.find('.timepicker').timepicker){
-     obj.find('.timepicker').timepicker();
+    obj.find('.timepicker').timepicker();
+    if ($.fn.dialogbox != undefined){
+        obj.find('.dialog-box').dialogbox();
     }
     obj.find('.autoresize').autoResize().addClass('ui-widget').addClass('ui-widget-content');
     obj.find('.autocomplete select').combobox();
@@ -1017,30 +1275,31 @@ LIMBO.process = function(obj){
     obj.find('.link_button, .simple_button').button();
     obj.find('.download_button').download_button();
     obj.find('.accordion').accordion({
-                header: "h2",
-                autoHeight: false,
-                navigation: true
-                });
+        header: "h2",
+        autoHeight: false,
+        navigation: true
+    });
     obj.find('.accordion_collapsible').accordion({
-                header: "h2",
-                autoHeight: false,
-                navigation: true,
-                collapsible:true
-                });
+        header: "h2",
+        autoHeight: false,
+        navigation: true,
+        collapsible:true
+    });
     obj.find('form.collapsible').accordion({
-                header: "fieldset legend",
-                autoHeight: false,
-                navigation: true,
-                collapsible:true
-                });
+        header: "fieldset legend",
+        autoHeight: false,
+        navigation: true,
+        collapsible:true
+    });
     obj.find('table.subreport').addClass('datatable');
     obj.find('.datatable').each(function(){
         var args = {
-                "bJQueryUI": true,
-                "iDisplayLength": 25,
-                "sPaginationType": "full_numbers",
-                "bStateSave":true
-            },
+            "bJQueryUI": true,
+            "iDisplayLength": 50,
+            "sPaginationType": "full_numbers",
+            "bStateSave":true,
+            "sScrollX": "100%"
+        },
             hiddens = [];
         $(this).find('thead th').each(function(index){
             var header = $(this).html().trim();
@@ -1058,9 +1317,9 @@ LIMBO.process = function(obj){
         }
         // You don't want to reinitialize it so remove datatable
         $(this).dataTable(args).removeClass('datatable');
-        });
+    });
 
-    LIMBO.stripe();
+    LIMBO.stripe(obj);
     if (LIMBO.forms != undefined) {
         LIMBO.forms.refresh();
     }
@@ -1068,9 +1327,29 @@ LIMBO.process = function(obj){
     obj.findOrIs('.ajaxform').each(function(){
         LIMBO.ajaxForm($(this));
     });
-    if (obj.find(".media").media){
-        obj.find(".media").media();
-    }
+    obj.find('a.ajax_button').each(function(){
+        LIMBO.AjaxLinkForm($(this), LIMBO.reload);
+    });
+    obj.findOrIs('.ajaxtab').each(function(){
+        if (! $(this).parents('.ui-tabs-panel').length){
+            LIMBO.ajaxForm($(this));
+        } else {
+            var tab = $(this).parents('.ui-tabs-panel');
+            var id = tab.attr('id');
+            var form = $(this);
+            $(this).ajaxForm({
+                beforeSubmit:function(){
+                    form.append(LIMBO.LOADING);
+                    form.disable();
+                },
+                success: function(response){
+                    tab.html(response);
+                    LIMBO.process($('#' + id));
+                }
+            });
+        }
+    });
+
     obj.find('div.media').css('margin', 'auto');
 //    process_fullscreen(obj);
     process_random_generators(obj);
@@ -1100,8 +1379,11 @@ LIMBO.process = function(obj){
     obj.find('.disabled').disable();
     obj.find('.enabled').enable();
     obj.find('select[readonly=readonly]').attr('disabled', 'disabled');
-    obj.find('.dataTables_wrapper table').css('width', '100%'); // TODO: FIND THE REAL PROBLEM!
+};
 
+LIMBO.process_json = function(data){
+    LIMBO.messages.from_data(data);
+    LIMBO.dialogs.from_data(data);
 };
 
 function Preloader(){
@@ -1129,644 +1411,56 @@ function Preloader(){
 
 LIMBO.preloader = new Preloader();
 
-function DataTablesCallBack(callback){
-    this.fn = this;
-    this.call = callback;
-}
-
-function StaticDataTable(sel) {
-    var parent = this;
-    this.sel = sel;
-    var ele = $(sel);
-    var table = ele.find('table:first');
-    this.advanced_search = $("<div class='dataTables_adv_filter'></div>")
-    this.ele = ele;
-    var $$ = this.$$ = $(ele);
-    this.columns = {};
-    this.rcolumns = {};
-    this.inline_data = {};
-
-    this.aoColumns = [];
-    this.$$.find('ol.col_attrs li').each(function(index, e){
-        try {
-            var d = JSON.parse($(e).html());
-            parent.aoColumns.push(d);
-            parent.columns[index] = $(e).attr('title');
-            parent.rcolumns[$(e).attr('title')] = index;
-        } catch (e){
-            console.log(e);
-        }
-    });
-    this.callbacks = new Array();
-
-    var tbl_args = {
-        "bProcessing": true,
-        'bDestroy':true,
-        "bServerSide": false,
-        "bJQueryUI": true,
-        "iDisplayLength": 25,
-        "sPaginationType": "full_numbers",
-        "sSearch": "Search all:",
-        "bStateSave":true
-    };
-
-    if (this.aoColumns.length != 0){
-        tbl_args["aoColumns"] = this.aoColumns;
-    }
-
-    var oTable = $(table).dataTable( tbl_args );
-
-    var oSettings = oTable.fnSettings();
-    this.oSettings = oSettings;
-    this.oServerData = oSettings.fnServerData;
-
-    function setup_forms(){
-        this.editable = false;
-        if ($$.find(".action_bar")){
-            this.editable = true;
-            this.form = ele.find('form');
-            this.form_obj = $(this.form);
-            this.form_obj.ajaxForm({
-                    url: parent.source,
-                    beforeSubmit: function(){
-                        oTable.oApi._fnProcessingDisplay(oTable.fnSettings(), true);
-                        },
-                    success: function(data){
-                        oTable.oApi._fnProcessingDisplay(oTable.fnSettings(), false);
-                        LIMBO.messages.from_data(data);
-                        if (data.success){
-                            oTable.fnDraw();
-                        } else {
-                            alert (data.errors);
-                        }
-                    },
-                    dataType:'json'
-                    });
-        }
-    }
-
-    function individual_filters() {
-
-        function filter_index(input){
-            var vindex = parent.filters.index(input),
-                visibles = 0;
-            for (var index in parent.oSettings.aoColumns){
-                var col = parent.oSettings.aoColumns[index];
-                if (col.bVisible){
-                    visibles += 1;
-                }
-                if (visibles == vindex+1){
-                    return col.iDataSort;
-                }
-            }
-            return vindex;
-        }
-
-        parent.filters.keyup( function () {
-            /* Filter on the column (the index) of this element */
-            parent.oTable.fnFilter( this.value, filter_index(this) );
-        } );
-
-        parent.filters.change( function () {
-            /* Filter on the column (the index) of this element */
-            parent.oTable.fnFilter( this.value, filter_index(this) );
-        } );
-
-        /*
-         * Support functions to provide a little bit of 'user friendlyness' to the textboxes in
-         * the footer
-         */
-        parent.filters.each( function (i) {
-            parent.asInitVals[i] = this.value;
-            $(this).addClass("search_init");
-        } );
-
-        parent.filters.focus( function () {
-            if ( $(this).hasClass("search_init") )
-            {
-                $(this).removeClass("search_init");
-                this.value = "";
-            }
-        } );
-
-        parent.filters.blur( function() {
-            if ( this.value == "" ) {
-                $(this).addClass("search_init");
-                this.value = parent.asInitVals[parent.filters.index(this)];
-            }
-        } );
-
-        // Reload data from saved state
-        if (parent.oSettings.oLoadedState != null && parent.oSettings.oLoadedState['aaSearchCols'] != undefined){
-            var pSearch = parent.oSettings.oLoadedState['aaSearchCols'];
-            for (var index in parent.columns){
-                parent.filters.each(function(){
-                    if ($(this).attr('title') == parent.columns[index] && pSearch[index] != undefined){
-                        var val = pSearch[index][0];
-                        if (val != "" && val!= null && val != undefined){
-                            $(this).val(val);
-                            $(this).removeClass("search_init");
-                        }
-                    }
-                });
-            }
-        }
-    }
-
-    function table_callbacks(settings){
-            // Just a pass through to call all methods in the parent
-            for (var index in parent.callbacks){
-                parent.callbacks[index](settings);
-            }
-            LIMBO.process(parent.table);
-        }
-
-    function setup_menu() {
-        var menu_html = parent.config.find('.col_menu');
-        parent.ele.find(".dataTables_filter").append(menu_html);
-        parent.menu = parent.ele.find(".dataTables_filter .col_menu");
-        parent.menu.button();
-        parent.menu_cols = parent.config.find('.col_menu_html');
-        var col_menu_html = parent.menu_cols.html();
-        var menu = parent.fgmenu = parent.menu.fgmenu({
-                content: col_menu_html,
-                positionOpts: {
-                    posX: 'left',
-                    posY: 'bottom',
-                    offsetY:2,
-                    directionH:'left'},
-                showSpeed: 300,
-                linkToFront: true
-            });
-        menu.container.find('a').each(function(){
-            function update_disabled(obj){
-                var col = parent.rcolumns[obj.attr('title')],
-                    bVis;
-                if (oTable.fnSettings().aoColumns && oTable.fnSettings().aoColumns[col]){
-                    bVis = oTable.fnSettings().aoColumns[col].bVisible;
-                } else {
-                    bVis = true;
-                }
-                if (bVis){
-                    obj.parent().removeClass("ui-state-disabled");
-                } else {
-                    obj.parent().addClass("ui-state-disabled");
-                }
-            }
-            $(this).click(function(){
-                var col = parent.rcolumns[$(this).attr('title')],
-                    bVis;
-                if (oTable.fnSettings().aoColumns && oTable.fnSettings().aoColumns[col]){
-                    bVis = oTable.fnSettings().aoColumns[col].bVisible;
-                } else {
-                    bVis = true;
-                }
-                var newVis = bVis ? false : true;
-                oTable.fnSetColumnVis( col, newVis);
-                update_disabled($(this));
-                return false;
-           });
-            update_disabled($(this));
-        });
-    }
-
-    function fnFormatDetails ( url, row ){
-        $.ajax({
-            url: url,
-            cache:true,
-            success: function(data){
-                var new_row = oTable.fnOpen( row[0], data, 'details ui-widget ui-widget-content' );
-                LIMBO.process($(new_row));
-                parent.inline_data[url] = data;
-            }
-        });
-        return LIMBO.LOADER;
-    }
-
-    function setup_inlines(){
-        parent.ele.find('.inline_row').click(function(){
-            var c = $(this),
-                row = c.parents('tr'),
-                url = c.attr('href'),
-                cls = 'details_open';
-            try {
-                if (c.hasClass(cls)){
-                    oTable.fnClose( row[0] );
-                    c.removeClass(cls);
-                } else {
-                    var new_row = oTable.fnOpen( row[0], fnFormatDetails(url, row), 'details ui-widget ui-widget-content' );
-                    new_row = $(new_row);
-                    LIMBO.process(new_row);
-                    c.addClass(cls);
-                }
-            } catch (e) { console.log(e);
-            } finally {
-
-            }
-            return false;
-        });
-    }
-    this.callbacks.push(setup_inlines);
-
-    function setup_advanced_search(){
-        var adv_search_config = parent.config.find('.search_form');
-        var adv_search = parent.advanced_search;
-        if (adv_search_config.length > 0){
-            adv_search.append(adv_search_config.html());
-            adv_search.insertAfter(ele.find('.dataTables_filter'));
-            // Add search button
-            var adv_search_btn = parent.advanced_search_btn = $('<button class="dataTables_adv_filter_btn"><span class="ui-icon ui-icon-search"></span></button>');
-            adv_search_btn.insertBefore(parent.menu).button().click(function(){
-                adv_search.toggle();
-                return false;
-            });
-            adv_search.find('input, select, textarea').change(function(){
-                parent.process();
-            });
-            adv_search_config.remove();
-        }
-        adv_search.hide().addClass('ui-widget ui-widget-content ui-corner-all');
-    }
-
-    this.process = function(){
-        oTable.fnDraw();
-    };
-
-    /* This handles all callback stuff and makes it easier to
-     * just pass a function in to be called upon draw of the table.
-    */
-    this.add_callback = function(callback){
-        this.callbacks.push(callback);
-    };
-
-    var call_all = new DataTablesCallBack(table_callbacks);
-    this.call_all = call_all;
-//    oSettings.aoDrawCallback.push(call_all);
-
-    this.ele = ele;
-    this.table = table;
-    this.oTable = oTable;
-    this.asInitVals = new Array();
-    this.filters = parent.$$.find("tfoot input, tfoot select");
-    individual_filters();
-    this.config = this.$$.find('.server_table_config');
-    this._config_html = this.config.html();
-    setup_menu();
-    setup_inlines();
-    setup_advanced_search();
-    setup_forms();
-//    this.config.remove();
-}
-
-function process_static_data_tables(sel){
-    if (!sel){
-        sel = '.static_datatable';
-    }
+function process_static_data_tables(obj){
+    var klass = 'static_datatable',
+        sel = '.' + klass;
     if (LIMBO.static_tables == undefined){
         LIMBO.static_tables = new Object();
     }
-    var obj = $(sel);
-    obj.each(function(index, element){
+    if(obj == undefined){
+        obj = $('body');
+    }
+    obj.find(sel).each(function(index, element){
         var e = $(element);
         var tble = e.find('table');
-        LIMBO.static_tables[tble.attr('id')] = new StaticDataTable(element);
+        if (LIMBO.static_tables[tble.attr('id')] == undefined){
+            LIMBO.static_tables[tble.attr('id')] = new StaticDataTable(element);
+        }
+        e.removeClass(klass);
     });
 }
-_preprocess.push(process_static_data_tables);
+LIMBO.preprocess(process_static_data_tables)
 
-function ServerDataTable(sel) {
-    var parent = this;
-    this.sel = sel;
-    var ele = $(sel);
-    var table = ele.find('table:first');
-    var source = this.source = ele.find('.server_table_config a.tablesource')[0].getAttribute('href');
-    this.advanced_search = $("<div class='dataTables_adv_filter'></div>")
-    this.ele = ele;
-    var $$ = this.$$ = $(ele);
-    this.columns = {};
-    this.rcolumns = {};
-    this.inline_data = {};
-
-    this.aoColumns = [];
-    this.$$.find('ol.col_attrs li').each(function(index, e){
-        try {
-            var d = JSON.parse($(e).html());
-            parent.aoColumns.push(d);
-            parent.columns[index] = $(e).attr('title');
-            parent.rcolumns[$(e).attr('title')] = index;
-        } catch (e){
-            console.log(e);
-        }
-    });
-    this.callbacks = new Array();
-
-    this.query_data = function (aoData){
-        var data = {}
-        if (aoData != undefined){
-            for (var key in aoData){
-                var o = aoData[key];
-                data[o.name] = o.value;
-            }
-        }
-        for (var key in LIMBO.GET){
-            data[key] = LIMBO.GET[key];
-        }
-        var tdata = $.param(data, true);
-        tdata += '&' + parent.advanced_search.find('input, select, textarea').serialize();
-        return tdata;
-    }
-
-    var tbl_args = {
-        "bProcessing": true,
-        'bDestroy':true,
-        "bServerSide": true,
-        "sAjaxSource": source,
-        "bJQueryUI": true,
-        "iDisplayLength": 50,
-        "sPaginationType": "full_numbers",
-        "sSearch": "Search all:",
-        "bStateSave":true,
-        "fnServerData": function ( sSource, aoData, fnCallback ) {
-            var data = parent.query_data(aoData);
-            $.ajax({
-                url: sSource,
-                dataType: 'json',
-                data: data,
-                success: function(json){
-                    fnCallback(json)
-                }
-            });
-        }
-    };
-
-    if (this.aoColumns.length != 0){
-        tbl_args["aoColumns"] = this.aoColumns;
-    }
-
-    var oTable = $(table).dataTable( tbl_args );
-
-    var oSettings = oTable.fnSettings();
-    this.oSettings = oSettings;
-    this.oServerData = oSettings.fnServerData;
-
-    function setup_forms(){
-        this.editable = false;
-        if ($$.find(".action_bar")){
-            this.editable = true;
-            this.form = ele.find('form');
-            this.form_obj = $(this.form);
-            this.form_obj.ajaxForm({
-                    url: parent.source,
-                    data: parent.query_data(),
-                    beforeSubmit: function(){
-                        oTable.oApi._fnProcessingDisplay(oTable.fnSettings(), true);
-                        },
-                    success: function(data){
-                        oTable.oApi._fnProcessingDisplay(oTable.fnSettings(), false);
-                        LIMBO.messages.from_data(data);
-                        if (data.success){
-                            oTable.fnDraw();
-                        } else {
-                            alert (data.errors);
-                        }
-                    },
-                    dataType:'json'
-                    });
-        }
-    }
-
-    function individual_filters() {
-
-        function filter_index(input){
-            var vindex = parent.filters.index(input),
-                visibles = 0;
-            for (var index in parent.oSettings.aoColumns){
-                var col = parent.oSettings.aoColumns[index];
-                if (col.bVisible){
-                    visibles += 1;
-                }
-                if (visibles == vindex+1){
-                    return col.iDataSort;
-                }
-            }
-            return vindex;
-        }
-
-        parent.filters.keyup( function () {
-            /* Filter on the column (the index) of this element */
-            parent.oTable.fnFilter( this.value, filter_index(this) );
-        } );
-
-        parent.filters.change( function () {
-            /* Filter on the column (the index) of this element */
-            parent.oTable.fnFilter( this.value, filter_index(this) );
-        } );
-
-        /*
-         * Support functions to provide a little bit of 'user friendlyness' to the textboxes in
-         * the footer
-         */
-        parent.filters.each( function (i) {
-            parent.asInitVals[i] = this.value;
-            $(this).addClass("search_init");
-        } );
-
-        parent.filters.focus( function () {
-            if ( $(this).hasClass("search_init") )
-            {
-                $(this).removeClass("search_init");
-                this.value = "";
-            }
-        } );
-
-        parent.filters.blur( function() {
-            if ( this.value == "" ) {
-                $(this).addClass("search_init");
-                this.value = parent.asInitVals[parent.filters.index(this)];
-            }
-        } );
-
-        // Reload data from saved state
-        if (parent.oSettings.oLoadedState != null && parent.oSettings.oLoadedState['aaSearchCols'] != undefined){
-            var pSearch = parent.oSettings.oLoadedState['aaSearchCols'];
-            for (var index in parent.columns){
-                parent.filters.each(function(){
-                    if ($(this).attr('title') == parent.columns[index] && pSearch[index] != undefined){
-                        var val = pSearch[index][0];
-                        if (val != "" && val!= null && val != undefined){
-                            $(this).val(val);
-                            $(this).removeClass("search_init");
-                        }
-                    }
-                });
-            }
-        }
-    }
-
-    function table_callbacks(settings){
-            // Just a pass through to call all methods in the parent
-            for (var index in parent.callbacks){
-                parent.callbacks[index](settings);
-            }
-            LIMBO.process(parent.table);
-        }
-
-    function setup_menu() {
-        var menu_html = parent.config.find('.col_menu');
-        parent.ele.find(".dataTables_filter").append(menu_html);
-        parent.menu = parent.ele.find(".dataTables_filter .col_menu");
-        parent.menu.button();
-        parent.menu_cols = parent.config.find('.col_menu_html');
-        var col_menu_html = parent.menu_cols.html();
-        var menu = parent.fgmenu = parent.menu.fgmenu({
-                content: col_menu_html,
-                positionOpts: {
-                    posX: 'left',
-                    posY: 'bottom',
-                    offsetY:2,
-                    directionH:'left'},
-                showSpeed: 300,
-                linkToFront: true
-            });
-        menu.container.find('a').each(function(){
-            function update_disabled(obj){
-                var col = parent.rcolumns[obj.attr('title')],
-                    bVis;
-                if (oTable.fnSettings().aoColumns && oTable.fnSettings().aoColumns[col]){
-                    bVis = oTable.fnSettings().aoColumns[col].bVisible;
-                } else {
-                    bVis = true;
-                }
-                if (bVis){
-                    obj.parent().removeClass("ui-state-disabled");
-                } else {
-                    obj.parent().addClass("ui-state-disabled");
-                }
-            }
-            $(this).click(function(){
-                var col = parent.rcolumns[$(this).attr('title')],
-                    bVis;
-                if (oTable.fnSettings().aoColumns && oTable.fnSettings().aoColumns[col]){
-                    bVis = oTable.fnSettings().aoColumns[col].bVisible;
-                } else {
-                    bVis = true;
-                }
-                var newVis = bVis ? false : true;
-                oTable.fnSetColumnVis( col, newVis);
-                update_disabled($(this));
-                return false;
-           });
-            update_disabled($(this));
-        });
-    }
-
-    function fnFormatDetails ( url, row ){
-        $.ajax({
-            url: url,
-            cache:true,
-            success: function(data){
-                var new_row = oTable.fnOpen( row[0], data, 'details ui-widget ui-widget-content' );
-                LIMBO.process($(new_row));
-                parent.inline_data[url] = data;
-            }
-        });
-        return LIMBO.LOADER;
-    }
-
-    function setup_inlines(){
-        parent.ele.find('.inline_row').click(function(){
-            var c = $(this),
-                row = c.parents('tr'),
-                url = c.attr('href'),
-                cls = 'details_open';
-            try {
-                if (c.hasClass(cls)){
-                    oTable.fnClose( row[0] );
-                    c.removeClass(cls);
-                } else {
-                    var new_row = oTable.fnOpen( row[0], fnFormatDetails(url, row), 'details ui-widget ui-widget-content' );
-                    new_row = $(new_row);
-                    LIMBO.process(new_row);
-                    c.addClass(cls);
-                }
-            } catch (e) { console.log(e);
-            } finally {
-
-            }
-            return false;
-        });
-    }
-    this.callbacks.push(setup_inlines);
-
-    function setup_advanced_search(){
-        var adv_search_config = parent.config.find('.search_form');
-        var adv_search = parent.advanced_search;
-        if (adv_search_config.length > 0){
-            adv_search.append(adv_search_config.html());
-            adv_search.insertAfter(ele.find('.dataTables_filter'));
-            // Add search button
-            var adv_search_btn = parent.advanced_search_btn = $('<button class="dataTables_adv_filter_btn"><span class="ui-icon ui-icon-search"></span></button>');
-            adv_search_btn.insertBefore(parent.menu).button().click(function(){
-                adv_search.toggle();
-                return false;
-            });
-            adv_search.find('input, select, textarea').change(function(){
-                parent.process();
-            });
-            adv_search_config.remove();
-        }
-        adv_search.hide().addClass('ui-widget ui-widget-content ui-corner-all');
-    }
-
-    this.process = function(){
-        oTable.fnDraw();
-    };
-
-    /* This handles all callback stuff and makes it easier to
-     * just pass a function in to be called upon draw of the table.
-    */
-    this.add_callback = function(callback){
-        this.callbacks.push(callback);
-    };
-
-    var call_all = new DataTablesCallBack(table_callbacks);
-    this.call_all = call_all;
-    oSettings.aoDrawCallback.push(call_all);
-
-    this.ele = ele;
-    this.table = table;
-    this.oTable = oTable;
-    this.asInitVals = new Array();
-    this.filters = parent.$$.find("tfoot input, tfoot select");
-    individual_filters();
-    this.config = this.$$.find('.server_table_config');
-    this._config_html = this.config.html();
-    setup_menu();
-    setup_inlines();
-    setup_advanced_search();
-    setup_forms();
-//    this.config.remove();
-    table.css('width', '100%');
-}
-
-function process_server_data_tables(sel){
-    if (!sel){
-        sel = '.server_datatable';
-    }
+function process_server_data_tables(obj){
+    var klass = 'server_datatable',
+        sel = '.' + klass;
     if (LIMBO.server_tables == undefined){
         LIMBO.server_tables = new Object();
     }
-    var obj = $(sel);
-    obj.each(function(index, element){
+    if(obj == undefined){
+        obj = $('body');
+    }
+    obj.find(sel).each(function(index, element){
         var e = $(element);
         var tble = e.find('table');
         if (LIMBO.server_tables[tble.attr('id')] == undefined){
             LIMBO.server_tables[tble.attr('id')] = new ServerDataTable(element);
         }
+        e.removeClass(klass);
     });
 }
-_preprocess.push(process_server_data_tables);
+LIMBO.preprocess(process_server_data_tables);
 
+LIMBO.Reports = {};
+
+function Report(obj, html){
+    this.obj = obj;
+    var parent = this;
+    var $$ = this.$$ = obj;
+    var export_csv = this.export_csv = $$.find('button.csv_export');
+    export_csv.find('a').attr('href', '#lookup');
+    export_csv.download_button();
+}
 
 LIMBO.dashboards = [];
 function Dashboard(obj){
@@ -1872,7 +1566,7 @@ function RandomGenerator(obj){
         this.btn = "<button class='generate_random'>Generate</button>";
         this.wrapper.append(this.btn);
         this.button = this.wrapper.find('.generate_random');
-            this.button.button().click(function(){
+        this.button.button().click(function(){
             parent.generate();
             return false;
         });
@@ -1903,12 +1597,43 @@ function process_random_generators(){
     });
 }
 
+function connect_to_pusher(keys){
+    LIMBO.pusher = new Pusher(LIMBO.PUSHER_KEY);
+    return LIMBO.pusher;
+}
+
+LIMBO.connect_to_pusher = connect_to_pusher;
+LIMBO.pusher = null;
+
+function subscribe_to_channels(){
+    if (LIMBO.pusher == null){
+        LIMBO.connect_to_pusher()
+    }
+    if (!LIMBO.PUSHER_CHANNELS){
+        return [];
+    }
+    if (LIMBO.pusher_channels != null){
+        return LIMBO.pusher_channels;
+    }
+    var channels = [];
+    var channel;
+    for (var i in LIMBO.PUSHER_CHANNELS){
+        channel = LIMBO.pusher.subscribe(LIMBO.PUSHER_CHANNELS[i]);
+        channels.push(channel);
+    }
+    LIMBO.pusher_channels = channels;
+    return channels;
+}
+LIMBO.subscribe_to_channels = subscribe_to_channels;
+LIMBO.pusher_channels = null;
+
 $(function(){
     LIMBO.background_image = $('body').css('background-image');
     LIMBO.server_tables = new Object();
     LIMBO.help_dialog = new HelpDialog();
     LIMBO.paginators = new Paginators();
-    $('#user_info').fgmenu({
+    if ( $.fn.fgmenu != undefined && $('#user_info').length > 0){
+        $('#user_info').fgmenu({
             content: $('#user_menu').html(),
             positionOpts: {
                 posX: 'left',
@@ -1918,38 +1643,130 @@ $(function(){
             showSpeed: 300,
             linkToFront: true
         });
+    }
     LIMBO.messages = new Messages();
     LIMBO.forms = new Forms();
     LIMBO.buttons = new Buttons();
-    LIMBO.stripe();
     LIMBO.process();
+    $('#feedback_button').feedback_button();
 
-    $( "#tabs" ).tabs({
-        ajaxOptions: {
-            error: function( xhr, status, index, anchor ) {
-                $( anchor.hash ).html(
-                    "Couldn't load this tab. We'll try to fix this as soon as possible. ");
+    $( "#tabs, .tabs" ).each(function(){
+        var $tabs = $(this);
+        var options = {
+            ajaxOptions: {
+                error: function( xhr, status, index, anchor ) {
+                    $( anchor.hash ).html(
+                        "Couldn't load this tab. We'll try to fix this as soon as possible. ");
+                }
+            },
+            cache: true,
+            select: function(event, ui) {
+                window.location = ui.tab.href;
+                process_server_data_tables(null);
+            },
+            create: function () {
+                LIMBO.process($(this));
+            },
+            load: function () {
+                LIMBO.process($(this));
             }
-        },
-        cache: True,
-        select: function(event, ui) {
-            window.location = ui.tab.href;
-            process_server_data_tables(null);
-        },
-        create: function () {
-            LIMBO.process($(this));
-        },
-        load: function () {
-            LIMBO.process($(this));
+        };
+        $tabs.tabs(options);
+
+        if ($(this).hasClass('preload')){
+            var total = $tabs.find('.ui-tabs-nav li').length;
+            var currentLoadingTab = 1;
+            $tabs.bind('tabsload',function(){
+                currentLoadingTab++;
+                if (currentLoadingTab < total)
+                    $tabs.tabs('load',currentLoadingTab);
+                else
+                    $tabs.unbind('tabsload');
+            }).tabs('load',currentLoadingTab);
         }
     });
 
-   $('.action_list li').click(function(){
-       if ($(this).find('a').attr('href') == '#'){
-           var message = new LIMBO.Message("Yea, that's still to come.");
-           LIMBO.messages.append(message);
-           return false;
-       }
-   });
+    $('.action_list li').click(function(){
+        if ($(this).find('a').attr('href') == '#'){
+            var message = new LIMBO.Message("Yea, that's still to come.");
+            LIMBO.messages.append(message);
+            return false;
+        }
+    });
 
+    $('#dialer_btn').click(function(){
+        var url = LIMBO.URLS.dialer_on;
+        $.ajax({
+            url:url,
+            dataType:'json',
+            success:function(data){
+                if (data.success){
+                    $('#nav').removeClass('not_dialing');
+                    $('#dialer_btn').remove();
+                }
+            }
+        })
+        return false;
+    });
+});
+
+//$(function(){
+//
+//    if (!/Firefox[\/\s](\d+\.\d+)/.test(navigator.userAgent)) {return false;}
+//    if(window.jquitr){
+//        jquitr.addThemeRoller();
+//    } else{
+//        jquitr = {};
+//        jquitr.s = document.createElement('script');
+//        jquitr.s.src = 'http://jqueryui.com/themeroller/developertool/developertool.js.php';
+//        document.getElementsByTagName('head')[0].appendChild(jquitr.s);}
+//})
+
+
+
+
+
+/*
+
+ CSRF Protection via AJAX
+
+ */
+
+$(document).ajaxSend(function(event, xhr, settings) {
+    function getCookie(name) {
+        var cookieValue = null;
+        if (document.cookie && document.cookie != '') {
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; i++) {
+                var cookie = jQuery.trim(cookies[i]);
+                // Does this cookie string begin with the name we want?
+                if (cookie.substring(0, name.length + 1) == (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function sameOrigin(url) {
+        // url could be relative or scheme relative or absolute
+        var host = document.location.host; // host + port
+        var protocol = document.location.protocol;
+        var sr_origin = '//' + host;
+        var origin = protocol + sr_origin;
+        // Allow absolute or scheme relative URLs to same origin
+        return (url == origin || url.slice(0, origin.length + 1) == origin + '/') ||
+            (url == sr_origin || url.slice(0, sr_origin.length + 1) == sr_origin + '/') ||
+            // or any other URL that isn't scheme relative or absolute i.e relative.
+            !(/^(\/\/|http:|https:).*/.test(url));
+    }
+
+    function safeMethod(method) {
+        return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+    }
+
+    if (!safeMethod(settings.type) && sameOrigin(settings.url)) {
+        xhr.setRequestHeader("X-CSRFToken", getCookie('csrftoken'));
+    }
 });

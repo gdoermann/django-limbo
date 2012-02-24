@@ -4,27 +4,32 @@
     LIMBO = function (a){
         var parent = this;
         this.USER = "{{request.user.get_profile.shortname}}";
-        this.STATIC_BASE = '{% firstof SITE_MEDIA_ROOT MEDIA_URL settings.MEDIA_URL '/' %}';
+        this.USER_ID = "{{request.user.id}}";
+        this.STATIC_BASE = '{{ SITE_MEDIA_ROOT }}';
         this.URLS = {% if URLS %}{{URLS|safe}}{% else %}{}{% endif %};
-        this.DATA = {}
+        this.DATA = {};
+        this.PAGE = '{{ PAGE }}';
         {% for key, value in ajax_data.items %}
-        this.DATA[{{key}}] = {{value}};
+            this.DATA[{{key}}] = {{value}};
         {% endfor %}
         this.LOADER = '<img src="' + this.STATIC_BASE + 'images/loader.gif" alt="loading..." class="loader" />';
+        this.SYNCING = '<img src="' + this.STATIC_BASE + 'images/syncing.gif" alt="syncing..." class="loader" />';
         this.CENTER_LOADER = '<p class="center">' + this.LOADER + '</p>';
         this.AJAX_ERROR = '<div style="padding-top:1em;text-align:center; font-size:15px; font-weight:bold;">There was en error processing your request. Please try again later</div>';
-        this.DEBUG = {% firstof SETTINGS.DEBUG 'false' %};
+        this.DEBUG = {% firstof SETTINGS.DEBUG request.user.is_superuser 'false' %};
         this.DASHBOARD_FILTER_FORM = {% firstof dashboard_filter_form '""' %};
         this.MESSAGE_SYNC = this.URLS['message_sync'];
         this.ERROR_URL = this.URLS['js_errors'];
         this.GET = {{ GET_DATA|safe }};
+        this.PUSHER_CHANNELS = {%  if PUSHER_CHANNELS %}{{ PUSHER_CHANNELS|safe}}{%  else %}[]{% endif %};
+        this.PUSHER_KEY = '{{ SETTINGS.PUSHER_KEY }}';
         this.set = function (key, item){
             parent[key] = item;
-        }
+        };
         this.get = function (key){
             return parent[key];
-        }
-        this.register = this.set
+        };
+        this.register = this.set;
 
         this.call = function(fn, opts){
             if (fn == undefined){
@@ -35,20 +40,50 @@
             } catch (e){
                 console.log(fn, opts, e);
             }
-        }
+        };
 
         this._init = function(){
             for (index in this.init){
                 this.call(this.init[index]);
             }
-        }
+        };
 
         this.init = [];
         if (a){this.init.push(a)}
 
         this._init();
-    }
+    };
 
     window.LIMBO = new LIMBO();
-    var LIMBO = window.LIMBO;
+    var _preprocess = [];
+    window.LIMBO.preprocess = function(c){
+        _preprocess.push(c);
+    };
+    window.LIMBO._preprocess = _preprocess;
+    {%  if SETTINGS.DEBUG %}
+        if (window.Pusher != undefined){
+            // Enable pusher logging - don't include this in production
+            Pusher.log = function(message) {
+                if (window.console && window.console.log) window.console.log(message);
+            };
+
+            // Flash fallback logging - don't include this in production
+            WEB_SOCKET_DEBUG = true;
+        }
+    {%  endif %}
+
+    $(function(){
+        window.orig_console = window.console;
+        if (!window.LIMBO.DEBUG || !window.console){
+            if (window.JSLog != undefined){
+                window.console = JSLog.Register('ppcc');
+                JSLog.SetLevel(0);
+            } else if (window.console){
+                console.error('could not load JSLog');
+            }
+            if (!window.LIMBO.DEBUG){
+                JSLog.SetLevel(0);
+            }
+        }
+    });
 </script>

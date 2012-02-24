@@ -1,0 +1,30 @@
+<div style="display:none;" class='server_table_config'>
+    {%  if table.source %}<a href='{{ table.source }}' class='tablesource'></a>{% endif %}
+    <ol class='col_attrs'>
+        {%  for col in table %}
+            <li title="{% firstof col.key col.label %}">{{ col.properties }}</li>
+        {%  endfor %}
+    </ol>
+    <div class='col_bar_info'>
+        <div class='col_menu ui-corner-all'>
+            <div><a class='col_options' href="stub.server_data_table.html#"><span class="ui-icon ui-icon-triangle-1-s" ></span></a></div>
+        </div>
+        <div class='col_menu_html ui-helper-hidden'>
+            <ul>
+            {%  for col in table %}
+                <li><a href="javascript:void(0)" title="{% firstof col.key col.label %}">{{ col.label }}</a></li>
+            {%  endfor %}
+            </ul>
+        </div>
+    </div>
+    {%  if table.search_form %}
+        <form class='search_form'>
+            <div class='dataTables_adv_filter_form'>
+                {{ table.search_form.as_p }}
+            </div>
+        </form>
+    {%  endif %}
+    {% if table.add_path %}
+        <a href='{{ table.add_url }}' title="{% if table.add_title %}{{ table.add_title }}{% else %} Add {{title}}{% endif %}" class='tableadd dataTables_adv_filter_btn'><span class="ui-icon ui-icon-plusthick"></span></a>
+    {% endif %}
+</div>

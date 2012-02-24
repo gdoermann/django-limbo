@@ -5,12 +5,13 @@
     <link rel="stylesheet" href="{% get_static_prefix %}css/{{ sheet }}" type="text/css" media="all" />
     {%  endfor %}
     {%  for less in SETTINGS.LESS_SHEETS %}
-    <link rel="stylesheet" href="{% get_static_prefix %}{{ less }}" type="text/less" media="all" />
+    <link rel="stylesheet" href="{% get_static_prefix %}less/{{ less }}" type="text/less" media="all" />
     {%  endfor %}
     <script src="{% get_static_prefix %}js/less-1.0.41.min.js" charset="utf-8" type="text/javascript"></script>
 {%  else %}
-    <link rel="stylesheet" href="{{ CSS }}limbo.min.css" type="text/css" media="all" />
-    <link rel="stylesheet" href="{{ CSS }}style.css" type="text/css" media="all" />
+    <link rel='stylesheet' href="Fail.css"/>
+    <link rel="stylesheet" href="{% get_static_prefix %}css/limbo.min.css" type="text/css" media="all" />
+    <link rel="stylesheet" href="{% get_static_prefix %}css/style.css" type="text/css" media="all" />
 {%  endif %}
 
 <script src="{% get_static_prefix %}js/jquery.js" charset="utf-8" type="text/javascript"></script>

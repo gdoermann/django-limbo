@@ -6,7 +6,7 @@ TODO: maybe is better to move to contrib/breadcrumbs
 from django.conf import settings
 from django.utils.translation import ugettext as _
 from django.utils.safestring import mark_safe
-from django.utils.text import force_unicode 
+from django.utils.text import force_unicode
 import sys
 from limbo.classes import Singleton
 
@@ -83,8 +83,8 @@ class Breadcrumbs(Singleton):
             if(self.__validate(args,0)):
                 self.__fill_bds( args )
         # match ( ( 'name', 'url'), ..) and samething with list
-        elif len(args) == 1 and type(args[0]) in (list,tuple) \
-                and len(args[0]) > 0:
+        elif len(args) == 1 and type(args[0]) in (list,tuple)\
+        and len(args[0]) > 0:
             for i,arg in enumerate(args[0]):
                 if self.__validate(arg,i):
                     self.__fill_bds( arg )
@@ -103,22 +103,22 @@ class Breadcrumbs(Singleton):
         # for list or tuple
         if type(obj) in (list,tuple):
             if len(obj) == 2:
-                if (not obj[0] and not obj[1]) or \
-                ( type(obj[0]) not in (str,unicode) and \
-                  type(obj[1]) not in (str,unicode)):
+                if (not obj[0] and not obj[1]) or\
+                   ( type(obj[0]) not in (str,unicode) and\
+                     type(obj[1]) not in (str,unicode)):
                     raise BreadcrumbsInvalidFormat(u"Invalid format for \
                         breadcrumb %s in %s" % (index,type(obj).__name__))
             if len(obj) != 2:
                 raise BreadcrumbsInvalidFormat(
                     u"Wrong itens number in breadcrumb %s in %s. \
-                    You need to send as example (name,url)" % \
+                    You need to send as example (name,url)" %\
                     (index,type(obj).__name__)
                 )
         # for objects
         elif not hasattr(obj,'name') and not hasattr(obj,'url'):
-            raise BreadcrumbsInvalidFormat(u"You need to use a tuple like"+ \
-                " (name,url) or object with name and url attributes for" + \
-                "breadcrumb.")
+            raise BreadcrumbsInvalidFormat(u"You need to use a tuple like"+\
+                                           " (name,url) or object with name and url attributes for" +\
+                                           "breadcrumb.")
         return True
 
     def __fill_bds(self,bd):
@@ -147,6 +147,9 @@ class Breadcrumbs(Singleton):
     def __getitem__(self,key):
         return self.__bds[key]
 
+    def has_key(self, key):
+        return self.__bdmap.has_key(key)
+
     def __repr__(self):
         return self.__unicode__()
 
@@ -154,8 +157,8 @@ class Breadcrumbs(Singleton):
         return self.__unicode__()
 
     def __unicode__(self):
-        return u"Breadcrumbs <%s>" % u", ".join([mark_safe(item.name) for item in \
-            self[:10]] + [u' ...'])
+        return u"Breadcrumbs <%s>" % u", ".join([mark_safe(item.name) for item in\
+                                                 self[:10]] + [u' ...'])
 
     def all(self):
         return self.__bds

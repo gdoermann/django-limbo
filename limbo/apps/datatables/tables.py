@@ -1,11 +1,10 @@
 from copy import deepcopy
+import traceback
 from django.core.exceptions import ImproperlyConfigured
 from django.core.urlresolvers import reverse
 from django.template.defaultfilters import slugify
 from django.utils.encoding import StrAndUnicode
-from limbo.strings import unslugify
-from limbo.meta import DeclarativeFieldsMetaclass
-from limbo.ajax import AjaxMessage, json_response
+from django.db.models import Q
 from django.template.loader import render_to_string
 from django.http import HttpResponse
 from django.utils.cache import add_never_cache_headers
@@ -14,17 +13,24 @@ from django.utils.datastructures import SortedDict
 from django.views.generic.simple import direct_to_template
 from django.utils.html import conditional_escape
 from django import template
+import logging
+from limbo.ajax import AjaxMessage, json_response
 from limbo.apps.datatables.fields import TableField
+from limbo.meta import DeclarativeFieldsMetaclass
+from limbo.strings import unslugify
+
+logger = logging.getLogger(__file__)
 
 DEFAULT_TEMPLATE = 'datatables/stub.server_data_table.html'
 DEFAULT_STATIC_TEMPLATE = 'datatables/stub.static_data_table.html'
 DEFAULT_BASE = 'datatables/generic_table_base.html'
 
 class BoundColumn:
-    def __init__(self, label, column):
+    def __init__(self, label, column, key = None, ):
         self.column = deepcopy(column)
         self.column.label = label
         self.label = label
+        self.key = key
 
     @property
     def attr(self):
@@ -107,7 +113,7 @@ class DataTablesBase(StrAndUnicode):
 
     @property
     def column_names(self):
-#        return [column.name for column in self.values()]
+    #        return [column.name for column in self.values()]
         return self.column_labels
 
     @property
@@ -149,20 +155,22 @@ class DataTablesBase(StrAndUnicode):
                     sortedColName = column.sort(sortingDirection)
                     if sortedColName:
                         asortingCols.append(sortedColName)
-            queryset = queryset.order_by(*asortingCols)
+            if asortingCols:
+                queryset = queryset.order_by(*asortingCols)
         return queryset
 
     def filter(self, queryset):
         searchableColumns = self.searchable_columns
         # Apply filtering by value sent by user
-        customSearch = self.data.get('sSearch', '').encode('utf-8')
-        if customSearch != '':
-            outputQ = None
-            for searchableColumn in searchableColumns:
-                q = searchableColumn.Q(customSearch)
-                if q:
-                    outputQ = outputQ | q if outputQ else q
-            queryset = queryset.filter(outputQ)
+        customSearch = self.data.get('sSearch', '').encode('utf-8').split(' ')
+        for customSearchStr in customSearch:
+            if customSearchStr != '':
+                outputQ = None
+                for searchableColumn in searchableColumns:
+                    q = searchableColumn.Q(customSearchStr)
+                    if q:
+                        outputQ = outputQ | q if outputQ else q
+                queryset = queryset.filter(outputQ)
 
         # Individual column search
         for col in range(0, self.cols):
@@ -189,7 +197,7 @@ class DataTablesBase(StrAndUnicode):
 
     def make_form(self, obj):
         return self.form(data = self.post, instance = obj,
-                     prefix="%s_%s" %(slugify(obj.__class__.__name__), obj.pk))
+            prefix="%s_%s" %(slugify(obj.__class__.__name__), obj.pk))
 
     def row_data(self, obj):
         row = []
@@ -267,7 +275,7 @@ class DataTablesBase(StrAndUnicode):
         d = []
         labels = self.labels
         for key, label in labels.items():
-            d.append(BoundColumn(label, self.columns[key]))
+            d.append(BoundColumn(label, self.columns[key], key))
         return d
 
     def __iter__(self):
@@ -279,7 +287,7 @@ class DataTable(DataTablesBase):
     class Meta:
         declaritive_types = {
             "base_fields": TableField,
-        }
+            }
 
 class ModelDataTableBase(DataTablesBase):
     """ A data table representation that knows how to render itself """
@@ -295,6 +303,7 @@ class ModelDataTableBase(DataTablesBase):
     form=None
     title=None
     search_form=None
+    add_path=None
     jsonTemplatePath=None
     source_path=None
 
@@ -303,10 +312,13 @@ class ModelDataTableBase(DataTablesBase):
         self.source = source_url or request.path
         DataTablesBase.__init__(self, request)
         self.title = title or self.title
+        if getattr(self, 'Meta', None) and getattr(self.Meta, 'exclude', None):
+            for name in self.Meta.exclude:
+                del self.columns[name]
 
     def save(self, queryset, *args, **kwargs):
         return DataTablesBase.save(self, queryset,
-                               *args, **kwargs)
+            *args, **kwargs)
 
     def render(self, request, context, template = 'datatables/server_data_table.html'):
         context['table'] = self
@@ -354,10 +366,19 @@ class ModelDataTableBase(DataTablesBase):
             queryset = self.queryset
         return super(ModelDataTableBase, self).rows(queryset)
 
+    def add_url(self, *args, **kwargs):
+        if not self.add_path:
+            return ''
+        try:
+            return reverse(self.add_path, args=args, kwargs=kwargs)
+        except:
+            logger.error(traceback.format_exc())
+            return ''
+
     def __unicode__(self):
         dictionary = {
             'table':self,
-        }
+            }
         return render_to_string(self.template, dictionary, template.Context(dictionary))
 
 class ModelDataTable(ModelDataTableBase):
@@ -366,4 +387,4 @@ class ModelDataTable(ModelDataTableBase):
     class Meta:
         declaritive_types = {
             "base_fields": TableField,
-        }
+            }
