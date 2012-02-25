@@ -101,12 +101,17 @@ class YearField(fields.DateField):
         value = super(YearField, self).clean(value)
         return value and value.year or value
 
+time_formats = []
+try:
+    time_formats += list(get_format('DEFAULT_TIME_INPUT_FORMATS'))
+except AttributeError:
+    pass
+
 DEFAULT_TIME_INPUT_FORMATS = getattr(settings, 'DEFAULT_TIME_INPUT_FORMATS',
       [
           '%H:%M %p',
           '%H:%M:%S %p'
-      ] + list(get_format('DEFAULT_TIME_INPUT_FORMATS'))
-      )
+      ] + time_formats )
 
 class AutoTimeField(fields.TimeField):
     widget = widgets.TimePicker
