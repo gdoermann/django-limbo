@@ -76,7 +76,7 @@
         window.orig_console = window.console;
         if (!window.LIMBO.DEBUG || !window.console){
             if (window.JSLog != undefined){
-                window.console = JSLog.Register('ppcc');
+                window.console = JSLog.Register('limbo');
                 JSLog.SetLevel(0);
             } else if (window.console){
                 console.error('could not load JSLog');
