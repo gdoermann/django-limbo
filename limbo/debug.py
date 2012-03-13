@@ -4,12 +4,14 @@ from limbo.strings import unslugify
 
 
 class Ticker:
-    def __init__(self, name="Ticker", stdout = None, do_print = True):
+    def __init__(self, name="Ticker", stdout = None, logger=None, do_print = True, max_splits=None):
         self.last_tick = None
         self.splits = None
         self.name = name
         self.stdout = stdout
+        self.logger = logger
         self.do_print = do_print
+        self.max_splits = max_splits
 
     def start(self):
         if self.last_tick is not None:
@@ -37,9 +39,13 @@ class Ticker:
             self.reset()
             return
         self.splits.append(self.time(reset = False))
+        if self.max_splits:
+            self.splits = self.splits[-self.max_splits:]
 
     def average_split(self, message = "Average Split", reset=True):
         splits = self.splits
+        if not splits:
+            return 0
         diff = timedelta()
         for s in splits:
             diff += s
@@ -50,8 +56,10 @@ class Ticker:
 
     def log(self, msg, reset=True):
         if self.do_print:
-            if self.stdout:
-                self.stdout.write(msg)
+            if self.logger:
+                self.logger(msg)
+            elif self.stdout:
+                self.stdout.write(msg + '\n')
             else:
                 print msg
         if reset:
