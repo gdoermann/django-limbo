@@ -1,9 +1,12 @@
+from copy import deepcopy
 from django.core.urlresolvers import reverse
 from django.template.defaultfilters import title
+from django.utils.encoding import StrAndUnicode
 from limbo.ajax import json_response
 from limbo import forms
 from limbo.strings import unslugify
 import datetime
+from limbo.meta import DeclarativeFieldsMetaclass, DeclaredField
 
 class DashboardForm(forms.Form):
     picker = forms.DateRangeFieldGenerator.picker(initial = forms.TimeRangePicker.DEFAULT_CHOICES.TODAY)
@@ -40,10 +43,11 @@ class DashboardForm(forms.Form):
                 default_range=self.default_range,
                 required=False)
 
-class DashboardWidget():
-    def __init__(self, attr, formatter = None, perm = None, request_test = None):
+class DashboardWidget(DeclaredField):
+    def __init__(self, attr, formatter=None, perm=None, request_test=None, *args, **kwargs):
         """ Formatter is a callable funtion that will
-        format the given value (like a template filter)"""
+            format the given value (like a template filter)"""
+        super(DashboardWidget, self).__init__(*args, **kwargs)
         self.name = attr
         self.formatter = formatter
         self.perm = perm
@@ -95,14 +99,13 @@ class BoundDashboardWidget():
     def __unicode__(self):
         return unicode(self.value)
 
-class Dashboard:
-    # TODO: make this like forms where the widgets are auto detected.
-    WIDGETS = []
+class DashboardBase(StrAndUnicode):
     MAX_RANGE = datetime.timedelta(days=35)
     DEFAULT_RANGE = forms.TimeRangePicker.default_range
     viewname = None
 
     def __init__(self, request, object):
+        self.fields = deepcopy(self.basefields)
         self.request = request
         self.object = object
         data = {}
@@ -137,7 +140,7 @@ class Dashboard:
     @property
     def widgets(self):
         widgets = []
-        for widget in self.WIDGETS:
+        for widget in self.fields.values():
             if widget.has_access(self.request):
                 widgets.append(widget(self.object))
         return widgets
@@ -150,3 +153,11 @@ class Dashboard:
         for widget in self.widgets:
             context[widget.name] = str(widget.value(self.start, self.end))
         return json_response(context)
+
+class Dashboard(DashboardBase):
+    __metaclass__ = DeclarativeFieldsMetaclass
+
+    class Meta:
+        declaritive_types = {
+            "base_fields": DashboardWidget,
+            }

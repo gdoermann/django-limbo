@@ -1,4 +1,5 @@
 import logging
+import urllib2
 from django.contrib import messages
 from django.core.mail import mail_managers
 from django.http import HttpResponse
@@ -10,6 +11,17 @@ except:
     import simplejson as json #@UnresolvedImport
 
 log = logging.getLogger(__name__)
+
+def get_response(url, safe=False):
+    req = urllib2.Request(url=url, )
+    try:
+        f = urllib2.urlopen(req)
+        return f.read()
+    except urllib2.HTTPError:
+        if not safe:
+            raise
+        return None
+
 
 def json_response(d):
     """ Dumps dictionary into a json string and retuns a HttpResponse object of mimetype json """

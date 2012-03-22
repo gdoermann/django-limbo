@@ -1,4 +1,5 @@
 from limbo.classes import Singleton
+from twisted.internet.defer import inlineCallbacks, returnValue
 
 __author__ = 'gdoermann'
 
@@ -54,11 +55,20 @@ class EventRegistry(object):
         self.methods = [method for method in methods if method]
 
     def register(self, method):
-        self.methods.append(method)
+        if method not in self.methods:
+            self.methods.append(method)
 
     def notify(self, *args, **kwargs):
         for method in self.methods:
             method(*args, **kwargs)
+
+    @inlineCallbacks
+    def txnotify(self, *args, **kwargs):
+        for method in self.methods:
+            yield method(*args, **kwargs)
+        yield
+        returnValue(None)
+
 
     def __call__(self, *args, **kwargs):
         self.notify(*args, **kwargs)

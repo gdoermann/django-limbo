@@ -509,7 +509,10 @@ function ServerDataTable(sel) {
             data[key] = LIMBO.GET[key];
         }
         var tdata = $.param(data, true);
-        tdata += '&' + parent.advanced_search.find('input, select, textarea').serialize();
+        if (tdata.length > 0){
+            tdata += '&';
+        }
+        tdata += parent.advanced_search.find('input, select, textarea').serialize();
         return tdata;
     };
     this.init();
