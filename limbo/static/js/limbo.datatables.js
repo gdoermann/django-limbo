@@ -47,11 +47,7 @@ BaseDataTable.method("setup", function(sel){
 
 BaseDataTable.method("get_table_args", function(){
     var cached;
-    if (this.config.find('.table_attrs .cached').text() == "1"){
-        cached = true;
-    } else {
-        cached = false;
-    }
+    cached = this.config.find('.table_attrs .cached').text() == "1";
     return {
         "bProcessing": true,
         'bDestroy':true,
