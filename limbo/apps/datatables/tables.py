@@ -65,6 +65,7 @@ class DataTablesBase(StrAndUnicode):
     Filtering: To filter your queryset call the DataTables.filter(queryset)
     """
     form = None
+    cached = True
 
     def __init__(self, request, form = None):
         self.request = request

@@ -1,5 +1,8 @@
 <div style="display:none;" class='server_table_config'>
     {%  if table.source %}<a href='{{ table.source }}' class='tablesource'></a>{% endif %}
+    <ol class='table_attrs'>
+        <span class='cached'>{% if table.cache %}true{% else %}false{% endif %}</span>
+    </ol>
     <ol class='col_attrs'>
         {%  for col in table %}
             <li title="{% firstof col.key col.label %}">{{ col.properties }}</li>

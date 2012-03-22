@@ -14,13 +14,15 @@ BaseDataTable.method("setup", function(sel){
     this.table = this.ele.find('table:first');
     this.advanced_search = $("<div class='dataTables_adv_filter'></div>");
     this.$$ = $(this.ele);
+    this.config = this.$$.find('.server_table_config');
+    this._config_html = this.config.html();
     this.columns = {};
     this.rcolumns = {};
     this.inline_data = {};
-    if (LIMBO.static_tables[this.table.attr('id')] != undefined || LIMBO.server_tables[this.table.attr('id')] != undefined){
+    if (this.table.hasClass('initializedDatatable')){
         throw "Datatable already initialized!";
     }
-
+    this.table.addClass('initializedDatatable');
     this.aoColumns = [];
     this.$$.find('ol.col_attrs li').each(function(index, e){
         try {
@@ -44,6 +46,12 @@ BaseDataTable.method("setup", function(sel){
 });
 
 BaseDataTable.method("get_table_args", function(){
+    var cached;
+    if (this.config.find('.table_attrs .cached').text() == "1"){
+        cached = true;
+    } else {
+        cached = false;
+    }
     return {
         "bProcessing": true,
         'bDestroy':true,
@@ -51,7 +59,7 @@ BaseDataTable.method("get_table_args", function(){
         "iDisplayLength": 50,
         "sPaginationType": "full_numbers",
         "sSearch": "Search all:",
-        "bStateSave":true,
+        "bStateSave":cached,
         "sScrollX": "100%"
     };
 });
@@ -68,8 +76,6 @@ BaseDataTable.method("init", function init(){
     this.oTable = oTable;
     this.oSettings = oSettings;
     this.oServerData = oSettings.fnServerData;
-    this.config = this.$$.find('.server_table_config');
-    this._config_html = this.config.html();
     this.setup_callbacks();
 
     this.individual_filters();
@@ -142,14 +148,33 @@ BaseDataTable.method("individual_filters", function () {
             parent.asInitVals[$(this).attr('id')] = this.value;
             $(this).addClass("search_init initialized ui-widget ui-widget-content");
         }
-        $(this).keyup( function () {
+
+        var oTimerId;
+        function do_filter(obj, event){
+            var $this = obj;
             /* Filter on the column (the index) of this element */
-            parent.oTable.fnFilter( this.value, parent.filter_index(this) );
+            window.clearTimeout(oTimerId);
+            if ($this.value == parent.asInitVals[$(this).attr('id')] || $this.value == ''){
+                parent.oTable.fnFilter( '', parent.filter_index($this) );
+            } else if (event != undefined && event.keyCode == '13') {
+                // cr, we filter immedately
+                parent.oTable.fnFilter( $this.value, parent.filter_index($this) );
+            } else {
+                // not cr, set new timer
+                oTimerId = window.setTimeout(function() {
+                    parent.oTable.fnFilter( $this.value, parent.filter_index($this)  );
+                }, 1000);
+            }
+        }
+
+        $(this).keyup( function (event) {
+            /* Filter on the column (the index) of this element */
+            do_filter(this, event);
         } );
 
         $(this).change( function () {
             /* Filter on the column (the index) of this element */
-            parent.oTable.fnFilter( this.value, parent.filter_index(this) );
+            do_filter(this);
         } );
 
         $(this).focus( function () {
@@ -172,12 +197,15 @@ BaseDataTable.method("individual_filters", function () {
         var pSearch = parent.oSettings.oLoadedState['aaSearchCols'];
         for (var index in parent.columns){
             parent.filters.each(function(){
-                if ($(this).attr('title') == parent.columns[index] && pSearch[index] != undefined){
+                if (LIMBO.slugify($(this).attr('title')).replace('-', '') == LIMBO.slugify(parent.columns[index]).replace('-', '') && pSearch[index] != undefined){
                     var val = pSearch[index][0];
-                    if (val != "" && val!= null && val != undefined){
+                    if (val.indexOf('Search ') == 0 || val.indexOf('Search%20') == 0){
+                        pSearch[index][0] = '';
+                    } else if (val != "" && val!= null && val != undefined){
                         $(this).val(val);
                         $(this).removeClass("search_init");
                     }
+                    return true;
                 }
             });
         }
@@ -283,7 +311,7 @@ BaseDataTable.method("setup_callbacks", function (){
     this.call_all = {
         'fn':this.table_callbacks,
         'sName':'CallCall'
-    }
+    };
     this.oSettings.aoDrawCallback.push(this.call_all);
 });
 
