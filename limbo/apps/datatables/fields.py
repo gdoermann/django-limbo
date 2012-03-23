@@ -195,6 +195,15 @@ class SearchableTableColumn(TableColumn):
             permission=permission)
 
 class WholeWordsTableColumn(SearchableTableColumn):
+    def __init__(self, attr, *args, **kwargs):
+        """
+        Note: regexes are dependant on your db backend!  SQLite will just be \b, but
+        mysql will have word boundries of [[:<:]] and [[:>:]]
+        """
+        self.start_word_boundary = kwargs.pop('start_word_boundary', '[[:<:]]')
+        self.end_word_boundary = kwargs.pop('end_word_boundary', '[[:>:]]')
+        super(WholeWordsTableColumn, self).__init__(attr, *args, **kwargs)
+
     def filter_args(self, value):
         cvalue = self.cleaned_value(value)
         if cvalue is None:
@@ -202,7 +211,8 @@ class WholeWordsTableColumn(SearchableTableColumn):
         words = str(cvalue).strip().split(' ')
         q = Q()
         for word in words:
-            attrs = {self.attr+"__iregex": r'\b%s\b' % word.strip()}
+            attrs = {self.attr+"__iregex": r'%s%s%s' % (self.start_word_boundary, word.strip(),
+                self.end_word_boundary)}
             q  |= Q(**attrs)
         return q
 
