@@ -153,11 +153,13 @@ class TableColumn(TableField):
         """ Must return a Q or None """
         if not self.searchable:
             return None
-        kwargs = self.filter_args(value)
-        if not kwargs:
+        filters = self.filter_args(value)
+        if not filters:
             return None
+        elif isinstance(filters, Q):
+            return filters
         else:
-            return Q(**kwargs)
+            return Q(**filters)
 
     def filter_args(self, value):
         cvalue = self.cleaned_value(value)
@@ -167,11 +169,13 @@ class TableColumn(TableField):
 
     def filter_queryset(self, queryset, value):
         # This is so you can do custom alterations to a queryset
-        args = self.filter_args(value)
-        if not args:
+        filters = self.filter_args(value)
+        if not filters:
             return queryset
+        elif isinstance(filters, Q):
+            return queryset.filter(filters)
         else:
-            return queryset.filter(**args)
+            return queryset.filter(**filters)
 
 class SearchableTableColumn(TableColumn):
     def __init__(self, attr,
@@ -189,6 +193,18 @@ class SearchableTableColumn(TableColumn):
             searchable=searchable, choices=choices, field=field,
             renderer=renderer, is_related=is_related, request_test=request_test,
             permission=permission)
+
+class WholeWordsTableColumn(SearchableTableColumn):
+    def filter_args(self, value):
+        cvalue = self.cleaned_value(value)
+        if cvalue is None:
+            return {}
+        words = str(cvalue).strip().split(' ')
+        q = Q()
+        for word in words:
+            attrs = {self.attr+"__iregex": r'\b%s\b' % word.strip()}
+            q  |= Q(**attrs)
+        return q
 
 class CaseSensitiveTableColumn(SearchableTableColumn):
     def filter_args(self, value):

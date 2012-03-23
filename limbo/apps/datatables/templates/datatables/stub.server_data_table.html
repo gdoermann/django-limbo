@@ -10,17 +10,16 @@
                     <th class='{{ column.classes }}'>{{ column.label }}</th>
                 {%  endfor %}
             </tr>
+            {%  if table.search_location == 'top' %}
+                {%  include 'datatables/stub.table_search.html' %}
+            {%  endif %}
         </thead>
         <tbody></tbody>
+        {%  if table.search_location == 'bottom' %}
         <tfoot>
-            <tr>
-                {%  for column in table %}
-                    <th class="{{ column.classes }}" >
-                        {{ column.widget }}
-                    </th>
-                {%  endfor %}
-            </tr>
+            {%  include 'datatables/stub.table_search.html' %}
         </tfoot>
+        {%  endif %}
     </table>
     {%  if table.editable %}
         <div class='action_bar'>

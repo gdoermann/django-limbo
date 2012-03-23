@@ -1,0 +1,7 @@
+<tr>
+    {%  for column in table %}
+        <th class="{{ column.classes }}" >
+            {{ column.widget }}
+        </th>
+    {%  endfor %}
+</tr>

@@ -64,8 +64,14 @@ class DataTablesBase(StrAndUnicode):
     Ordering: To order your queryset call the DataTables.order(queryset)
     Filtering: To filter your queryset call the DataTables.filter(queryset)
     """
+    class SEARCH_LOCATIONS:
+        TOP = 'top'
+        BOTTOM = 'bottom'
+        NONE = None
+
     form = None
     cached = True
+    search_location = SEARCH_LOCATIONS.BOTTOM
 
     def __init__(self, request, form = None):
         self.request = request

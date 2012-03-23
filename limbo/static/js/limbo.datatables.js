@@ -135,7 +135,7 @@ BaseDataTable.method("setup_forms", function(){
 BaseDataTable.method("individual_filters", function () {
     this.asInitVals = new Array();
     var parent = this;
-    parent.filters = parent.$$.find("tfoot input, tfoot select");
+    parent.filters = parent.$$.find("tfoot input, tfoot select, thead input, thead select");
     parent.filters.each( function (i) {
         if (!$(this).attr('id')){
             $(this).attr('id', create_uuid());
